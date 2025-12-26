@@ -69,8 +69,8 @@ export async function apiGet(
 
 export async function apiPost(
   url: string,
+  body: any,
   role: UserRole,
-  body?: any,
   skipAuth = false
 ): Promise<Response> {
   return apiClient(url, {
@@ -86,12 +86,29 @@ export async function apiPost(
 
 export async function apiPut(
   url: string,
+  body: any,
   role: UserRole,
-  body?: any,
   skipAuth = false
 ): Promise<Response> {
   return apiClient(url, {
     method: "PUT",
+    role,
+    skipAuth,
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+}
+
+export async function apiPatch(
+  url: string,
+  body: any,
+  role: UserRole,
+  skipAuth = false
+): Promise<Response> {
+  return apiClient(url, {
+    method: "PATCH",
     role,
     skipAuth,
     headers: {
