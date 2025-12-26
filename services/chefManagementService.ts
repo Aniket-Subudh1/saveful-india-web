@@ -11,7 +11,7 @@ export interface Chef {
 }
 
 class ChefManagementService {
-  private readonly API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+  private readonly API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
   async createChef(chefData: ChefCreateDto): Promise<{ success: boolean; message: string; chef: Chef }> {
     const response = await apiPost(

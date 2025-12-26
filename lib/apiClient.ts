@@ -84,6 +84,23 @@ export async function apiPost(
   });
 }
 
+export async function apiPut(
+  url: string,
+  role: UserRole,
+  body?: any,
+  skipAuth = false
+): Promise<Response> {
+  return apiClient(url, {
+    method: "PUT",
+    role,
+    skipAuth,
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+}
+
 export async function apiDelete(
   url: string,
   role: UserRole,

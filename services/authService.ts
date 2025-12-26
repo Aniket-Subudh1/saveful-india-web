@@ -8,7 +8,7 @@ interface IAuthService {
 }
 
 class AuthService implements IAuthService {
-  private readonly API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+  private readonly API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
   private refreshingTokenPromise: Promise<boolean> | null = null;
 
   async login(
