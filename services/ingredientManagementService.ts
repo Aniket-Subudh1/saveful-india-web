@@ -173,79 +173,55 @@ class IngredientManagementService {
   }
 
   async createIngredient(dto: CreateIngredientDto): Promise<Ingredient> {
-    console.log("createIngredient called with DTO:", dto);
+    console.log("=== CREATE INGREDIENT SERVICE ===");
+    console.log("Input DTO:", dto);
     
     const formData = new FormData();
 
-    // Add all fields to FormData
+    // Add required fields
     formData.append("name", dto.name);
 
+    // Add optional text fields
+    if (dto.description) formData.append("description", dto.description);
+    if (dto.nutritionInfo) formData.append("nutritionInfo", dto.nutritionInfo);
+    if (dto.categoryId) formData.append("categoryId", dto.categoryId);
+    if (dto.theme) formData.append("theme", dto.theme);
+
+    // Add arrays
     if (dto.aliases && dto.aliases.length > 0) {
       formData.append("aliases", JSON.stringify(dto.aliases));
     }
-
-    if (dto.description) {
-      formData.append("description", dto.description);
-    }
-
-    if (dto.nutritionInfo) {
-      formData.append("nutritionInfo", dto.nutritionInfo);
-    }
-
-    if (dto.categoryId) {
-      formData.append("categoryId", dto.categoryId);
-    }
-
-    // FIXED: Only append boolean fields if they are explicitly true
-    // If false or undefined, don't send them (backend defaults to false)
-    if (dto.isVeg === true) {
-      formData.append("isVeg", "true");
-    }
-    if (dto.isVegan === true) {
-      formData.append("isVegan", "true");
-    }
-    if (dto.isDairy === true) {
-      formData.append("isDairy", "true");
-    }
-    if (dto.isNut === true) {
-      formData.append("isNut", "true");
-    }
-    if (dto.isGluten === true) {
-      formData.append("isGluten", "true");
-    }
-
-    if (dto.hasPage === true) {
-      formData.append("hasPage", "true");
-    }
-
     if (dto.tags && dto.tags.length > 0) {
       formData.append("tags", JSON.stringify(dto.tags));
     }
-
-    if (dto.theme) {
-      formData.append("theme", dto.theme);
-    }
-
     if (dto.inSeasonMonths && dto.inSeasonMonths.length > 0) {
       formData.append("inSeasonMonths", JSON.stringify(dto.inSeasonMonths));
     }
 
-    if (dto.isPantryItem === true) {
-      formData.append("isPantryItem", "true");
-    }
-
+    // Add numbers
     if (dto.averageWeight !== undefined && dto.averageWeight !== null) {
       formData.append("averageWeight", String(dto.averageWeight));
     }
 
+    // CRITICAL: Boolean fields - ONLY send if explicitly true
+    // This works with the backend's default of false
+    if (dto.isVeg === true) formData.append("isVeg", "true");
+    if (dto.isVegan === true) formData.append("isVegan", "true");
+    if (dto.isDairy === true) formData.append("isDairy", "true");
+    if (dto.isNut === true) formData.append("isNut", "true");
+    if (dto.isGluten === true) formData.append("isGluten", "true");
+    if (dto.hasPage === true) formData.append("hasPage", "true");
+    if (dto.isPantryItem === true) formData.append("isPantryItem", "true");
+
+    // Add image file
     if (dto.heroImage) {
       formData.append("image", dto.heroImage);
     }
 
-    // Debug FormData contents
-    console.log("FormData contents:");
+    // Debug FormData
+    console.log("=== FormData Contents ===");
     for (let [key, value] of formData.entries()) {
-      console.log(`${key}: ${value}`);
+      console.log(`${key}: ${value instanceof File ? `[File: ${value.name}]` : value}`);
     }
 
     const token = authService.getStoredToken("admin");
@@ -253,109 +229,89 @@ class IngredientManagementService {
       throw new Error("No authentication token available");
     }
 
-    const response = await fetch(
-      `${this.API_BASE_URL}/api/ingrediants`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      }
-    );
+    const response = await fetch(`${this.API_BASE_URL}/api/ingrediants`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({
         message: "Failed to create ingredient",
       }));
+      console.error("Create ingredient error:", error);
       throw { response: { data: error } };
     }
 
-    return response.json();
+    const result = await response.json();
+    console.log("Created ingredient:", result);
+    return result;
   }
 
   async updateIngredient(
     id: string,
     dto: Partial<CreateIngredientDto>
   ): Promise<Ingredient> {
-    console.log("updateIngredient called with DTO:", dto);
+    console.log("=== UPDATE INGREDIENT SERVICE ===");
+    console.log("Ingredient ID:", id);
+    console.log("Input DTO:", dto);
     
     const formData = new FormData();
 
-    if (dto.name) {
-      formData.append("name", dto.name);
-    }
+    // Add text fields (only if provided)
+    if (dto.name) formData.append("name", dto.name);
+    if (dto.description) formData.append("description", dto.description);
+    if (dto.nutritionInfo) formData.append("nutritionInfo", dto.nutritionInfo);
+    if (dto.categoryId) formData.append("categoryId", dto.categoryId);
+    if (dto.theme) formData.append("theme", dto.theme);
 
-    if (dto.aliases) {
-      formData.append("aliases", JSON.stringify(dto.aliases));
-    }
-
-    if (dto.description) {
-      formData.append("description", dto.description);
-    }
-
-    if (dto.nutritionInfo) {
-      formData.append("nutritionInfo", dto.nutritionInfo);
-    }
-
-    if (dto.categoryId) {
-      formData.append("categoryId", dto.categoryId);
-    }
-
-    // CRITICAL FIX: Always append as STRINGS, never as booleans
-    // FormData + NestJS has issues with boolean values
-    if (dto.isVeg !== undefined) {
-      formData.append("isVeg", dto.isVeg ? "true" : "false");
-    }
-
-    if (dto.isVegan !== undefined) {
-      formData.append("isVegan", dto.isVegan ? "true" : "false");
-    }
-
-    if (dto.isDairy !== undefined) {
-      formData.append("isDairy", dto.isDairy ? "true" : "false");
-    }
-
-    if (dto.isNut !== undefined) {
-      formData.append("isNut", dto.isNut ? "true" : "false");
-    }
-
-    if (dto.isGluten !== undefined) {
-      formData.append("isGluten", dto.isGluten ? "true" : "false");
-    }
-
-    if (dto.hasPage !== undefined) {
-      formData.append("hasPage", dto.hasPage ? "true" : "false");
-    }
-
-    if (dto.tags) {
-      formData.append("tags", JSON.stringify(dto.tags));
-    }
-
-    if (dto.theme) {
-      formData.append("theme", dto.theme);
-    }
-
+    // Add arrays
+    if (dto.aliases) formData.append("aliases", JSON.stringify(dto.aliases));
+    if (dto.tags) formData.append("tags", JSON.stringify(dto.tags));
     if (dto.inSeasonMonths) {
       formData.append("inSeasonMonths", JSON.stringify(dto.inSeasonMonths));
     }
 
-    if (dto.isPantryItem !== undefined) {
-      formData.append("isPantryItem", dto.isPantryItem ? "true" : "false");
-    }
-
+    // Add numbers
     if (dto.averageWeight !== undefined && dto.averageWeight !== null) {
       formData.append("averageWeight", String(dto.averageWeight));
     }
 
+    // CRITICAL FIX: For updates, ALWAYS send all boolean values as strings
+    // This ensures the backend receives and processes them correctly
+    if (dto.isVeg !== undefined) {
+      formData.append("isVeg", dto.isVeg ? "true" : "false");
+    }
+    if (dto.isVegan !== undefined) {
+      formData.append("isVegan", dto.isVegan ? "true" : "false");
+    }
+    if (dto.isDairy !== undefined) {
+      formData.append("isDairy", dto.isDairy ? "true" : "false");
+    }
+    if (dto.isNut !== undefined) {
+      formData.append("isNut", dto.isNut ? "true" : "false");
+    }
+    if (dto.isGluten !== undefined) {
+      formData.append("isGluten", dto.isGluten ? "true" : "false");
+    }
+    if (dto.hasPage !== undefined) {
+      formData.append("hasPage", dto.hasPage ? "true" : "false");
+    }
+    if (dto.isPantryItem !== undefined) {
+      formData.append("isPantryItem", dto.isPantryItem ? "true" : "false");
+    }
+
+    // Add image file
     if (dto.heroImage) {
       formData.append("image", dto.heroImage);
     }
 
-    // Debug FormData contents
-    console.log("Update FormData contents:");
+    // Debug FormData
+    console.log("=== Update FormData Contents ===");
     for (let [key, value] of formData.entries()) {
-      console.log(`${key}: ${value} (type: ${typeof value})`);
+      console.log(`${key}: ${value instanceof File ? `[File: ${value.name}]` : value}`);
     }
 
     const token = authService.getStoredToken("admin");
@@ -378,10 +334,13 @@ class IngredientManagementService {
       const error = await response.json().catch(() => ({
         message: "Failed to update ingredient",
       }));
+      console.error("Update ingredient error:", error);
       throw { response: { data: error } };
     }
 
-    return response.json();
+    const result = await response.json();
+    console.log("Updated ingredient:", result);
+    return result;
   }
 
   async deleteIngredient(

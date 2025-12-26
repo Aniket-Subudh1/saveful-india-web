@@ -46,11 +46,11 @@ const MONTHS = [
 const THEMES = ["Green", "Red", "Yellow", "Blue", "Purple", "Orange"];
 
 const SUITABLE_DIETS = [
-  { key: "isVeg", label: "Vegetarian" },
+  { key: "isVeg", label: "Veg" },
   { key: "isVegan", label: "Vegan" },
-  { key: "isDairy", label: "Contains Dairy" },
-  { key: "isNut", label: "Contains Nuts" },
-  { key: "isGluten", label: "Contains Gluten" },
+  { key: "isDairy", label: "Dairy" },
+  { key: "isNut", label: "Nuts" },
+  { key: "isGluten", label: "Gluten" },
 ];
 
 export default function IngredientsPage() {
@@ -65,28 +65,19 @@ export default function IngredientsPage() {
   const [showModal, setShowModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showViewCategoriesModal, setShowViewCategoriesModal] = useState(false);
-  const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(
-    null
-  );
-  const [editingCategory, setEditingCategory] = useState<IngredientCategory | null>(
-    null
-  );
+  const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null);
+  const [editingCategory, setEditingCategory] = useState<IngredientCategory | null>(null);
   const [showDeleteCategoryModal, setShowDeleteCategoryModal] = useState(false);
-  const [categoryToDelete, setCategoryToDelete] = useState<IngredientCategory | null>(
-    null
-  );
+  const [categoryToDelete, setCategoryToDelete] = useState<IngredientCategory | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [ingredientToDelete, setIngredientToDelete] =
-    useState<Ingredient | null>(null);
+  const [ingredientToDelete, setIngredientToDelete] = useState<Ingredient | null>(null);
 
-  // Category form state
   const [categoryForm, setCategoryForm] = useState({
     name: "",
     description: "",
   });
 
-  // Ingredient form state
   const [ingredientForm, setIngredientForm] = useState<CreateIngredientDto>({
     name: "",
     aliases: [],
@@ -127,6 +118,7 @@ export default function IngredientsPage() {
       setCategories(categoriesData);
     } catch (error: any) {
       console.error("Failed to load data:", error);
+      alert("Failed to load data. Please refresh the page.");
     } finally {
       setLoadingData(false);
     }
@@ -160,9 +152,7 @@ export default function IngredientsPage() {
       await loadData();
     } catch (error: any) {
       console.error("Failed to save category:", error);
-      alert(
-        error?.response?.data?.message || "Failed to save category"
-      );
+      alert(error?.response?.data?.message || "Failed to save category");
     } finally {
       setIsSubmitting(false);
     }
@@ -189,9 +179,7 @@ export default function IngredientsPage() {
       await loadData();
     } catch (error: any) {
       console.error("Failed to delete category:", error);
-      alert(
-        error?.response?.data?.message || "Failed to delete category"
-      );
+      alert(error?.response?.data?.message || "Failed to delete category");
     } finally {
       setIsSubmitting(false);
     }
@@ -202,8 +190,7 @@ export default function IngredientsPage() {
     setIsSubmitting(true);
 
     try {
-      // Base submission data
-      const baseData: CreateIngredientDto = {
+      const submissionData: CreateIngredientDto = {
         name: ingredientForm.name,
         aliases: ingredientForm.aliases || [],
         description: ingredientForm.description || "",
@@ -214,53 +201,24 @@ export default function IngredientsPage() {
         inSeasonMonths: ingredientForm.inSeasonMonths || [],
         averageWeight: ingredientForm.averageWeight,
         heroImage: ingredientForm.heroImage,
+        // Always send all boolean values explicitly
+        isVeg: ingredientForm.isVeg === true,
+        isVegan: ingredientForm.isVegan === true,
+        isDairy: ingredientForm.isDairy === true,
+        isNut: ingredientForm.isNut === true,
+        isGluten: ingredientForm.isGluten === true,
+        hasPage: ingredientForm.hasPage === true,
+        isPantryItem: ingredientForm.isPantryItem === true,
       };
 
-      // For CREATE: only include true boolean values (backend defaults to false)
-      // For UPDATE: include all boolean values explicitly
-      if (editingIngredient) {
-        // UPDATE mode - send all boolean values
-        const submissionData: CreateIngredientDto = {
-          ...baseData,
-          isVeg: ingredientForm.isVeg === true,
-          isVegan: ingredientForm.isVegan === true,
-          isDairy: ingredientForm.isDairy === true,
-          isNut: ingredientForm.isNut === true,
-          isGluten: ingredientForm.isGluten === true,
-          hasPage: ingredientForm.hasPage === true,
-          isPantryItem: ingredientForm.isPantryItem === true,
-        };
+      console.log("Submitting ingredient:", submissionData);
 
-        console.log("Updating ingredient:", submissionData);
+      if (editingIngredient) {
         await ingredientManagementService.updateIngredient(
           editingIngredient.id,
           submissionData
         );
       } else {
-        // CREATE mode - only include true values
-        const submissionData: CreateIngredientDto = {
-          ...baseData,
-          // Only add boolean fields if they're true
-          ...(ingredientForm.isVeg === true && { isVeg: true }),
-          ...(ingredientForm.isVegan === true && { isVegan: true }),
-          ...(ingredientForm.isDairy === true && { isDairy: true }),
-          ...(ingredientForm.isNut === true && { isNut: true }),
-          ...(ingredientForm.isGluten === true && { isGluten: true }),
-          ...(ingredientForm.hasPage === true && { hasPage: true }),
-          ...(ingredientForm.isPantryItem === true && { isPantryItem: true }),
-        };
-
-        console.log("Creating ingredient:", submissionData);
-        console.log("Boolean values that are TRUE:", {
-          isVeg: submissionData.isVeg,
-          isVegan: submissionData.isVegan,
-          isDairy: submissionData.isDairy,
-          isNut: submissionData.isNut,
-          isGluten: submissionData.isGluten,
-          hasPage: submissionData.hasPage,
-          isPantryItem: submissionData.isPantryItem,
-        });
-
         await ingredientManagementService.createIngredient(submissionData);
       }
 
@@ -269,27 +227,14 @@ export default function IngredientsPage() {
       await loadData();
     } catch (error: any) {
       console.error("Failed to save ingredient:", error);
-      alert(
-        error?.response?.data?.message || "Failed to save ingredient"
-      );
+      alert(error?.response?.data?.message || "Failed to save ingredient");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleEdit = (ingredient: Ingredient) => {
-    console.log("=== EDITING INGREDIENT ===");
-    console.log("Raw ingredient data from database:", ingredient);
-    console.log("Boolean values in DB:", {
-      isVeg: ingredient.isVeg,
-      isVegan: ingredient.isVegan,
-      isDairy: ingredient.isDairy,
-      isNut: ingredient.isNut,
-      isGluten: ingredient.isGluten,
-      hasPage: ingredient.hasPage,
-      isPantryItem: ingredient.isPantryItem,
-    });
-    
+    console.log("Editing ingredient:", ingredient);
     setEditingIngredient(ingredient);
     setIngredientForm({
       name: ingredient.name,
@@ -297,7 +242,6 @@ export default function IngredientsPage() {
       description: ingredient.description || "",
       nutritionInfo: ingredient.nutritionInfo || "",
       categoryId: ingredient.categoryId || "",
-      // Ensure we're setting actual boolean values
       isVeg: ingredient.isVeg === true,
       isVegan: ingredient.isVegan === true,
       isDairy: ingredient.isDairy === true,
@@ -314,16 +258,6 @@ export default function IngredientsPage() {
       setHeroImagePreview(ingredient.imageUrl);
     }
     setShowModal(true);
-    
-    console.log("Editing ingredient:", ingredient);
-    console.log("Form populated with boolean values:", {
-      isVeg: ingredient.isVeg === true,
-      isVegan: ingredient.isVegan === true,
-      isDairy: ingredient.isDairy === true,
-      isNut: ingredient.isNut === true,
-      isGluten: ingredient.isGluten === true,
-      hasPage: ingredient.hasPage === true,
-    });
   };
 
   const handleDelete = async () => {
@@ -331,17 +265,13 @@ export default function IngredientsPage() {
 
     setIsSubmitting(true);
     try {
-      await ingredientManagementService.deleteIngredient(
-        ingredientToDelete.id
-      );
+      await ingredientManagementService.deleteIngredient(ingredientToDelete.id);
       setShowDeleteModal(false);
       setIngredientToDelete(null);
       await loadData();
     } catch (error: any) {
       console.error("Failed to delete ingredient:", error);
-      alert(
-        error?.response?.data?.message || "Failed to delete ingredient"
-      );
+      alert(error?.response?.data?.message || "Failed to delete ingredient");
     } finally {
       setIsSubmitting(false);
     }
@@ -368,6 +298,8 @@ export default function IngredientsPage() {
       averageWeight: undefined,
     });
     setHeroImagePreview(null);
+    setAliasInput("");
+    setTagInput("");
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -432,6 +364,22 @@ export default function IngredientsPage() {
   const filteredIngredients = ingredients.filter((ingredient) =>
     ingredient.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // FIXED: Helper function to get active diet tags
+  // The checkboxes represent what the ingredient CONTAINS or IS
+  // Only show tags for TRUE values (checked checkboxes)
+  const getActiveDietTags = (ingredient: Ingredient) => {
+    const tags: string[] = [];
+    
+    // Show positive attributes (what it IS or CONTAINS)
+    if (ingredient.isVeg) tags.push("Veg");
+    if (ingredient.isVegan) tags.push("Vegan");
+    if (ingredient.isDairy) tags.push("Contains Dairy");
+    if (ingredient.isNut) tags.push("Contains Nuts");
+    if (ingredient.isGluten) tags.push("Contains Gluten");
+    
+    return tags;
+  };
 
   if (isLoading) {
     return (
@@ -589,125 +537,125 @@ export default function IngredientsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                {loadingData ? (
-                  <tr>
-                    <td colSpan={5} className="py-12 text-center">
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="h-12 w-12 animate-spin rounded-full border-4 border-saveful-green border-t-transparent"></div>
-                        <div className="font-saveful text-saveful-gray">
-                          Loading ingredients...
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                ) : filteredIngredients.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-12 text-center">
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="rounded-full bg-gray-100 p-6">
-                          <FontAwesomeIcon
-                            icon={faLeaf}
-                            className="h-12 w-12 text-gray-300"
-                          />
-                        </div>
-                        <div className="font-saveful text-saveful-gray">
-                          No ingredients found
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredIngredients.map((ingredient, index) => (
-                    <motion.tr
-                      key={ingredient.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      className="group transition-colors hover:bg-gradient-to-r hover:from-saveful-green/5 hover:to-transparent"
-                    >
-                      <td className="px-6 py-4">
-                        {ingredient.imageUrl ? (
-                          <div className="relative h-14 w-14 overflow-hidden rounded-xl shadow-md transition-transform group-hover:scale-110">
-                            <Image
-                              src={ingredient.imageUrl}
-                              alt={ingredient.name}
-                              fill
-                              className="object-cover"
-                            />
+                  {loadingData ? (
+                    <tr>
+                      <td colSpan={5} className="py-12 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="h-12 w-12 animate-spin rounded-full border-4 border-saveful-green border-t-transparent"></div>
+                          <div className="font-saveful text-saveful-gray">
+                            Loading ingredients...
                           </div>
-                        ) : (
-                          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-gray-100 to-gray-50 shadow-sm transition-transform group-hover:scale-110">
+                        </div>
+                      </td>
+                    </tr>
+                  ) : filteredIngredients.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-12 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="rounded-full bg-gray-100 p-6">
                             <FontAwesomeIcon
                               icon={faLeaf}
-                              className="text-xl text-gray-400"
+                              className="h-12 w-12 text-gray-300"
                             />
                           </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="font-saveful-semibold text-saveful-black">
-                          {ingredient.name}
-                        </div>
-                        {ingredient.aliases && ingredient.aliases.length > 0 && (
-                          <div className="mt-1 font-saveful text-xs text-gray-500">
-                            {ingredient.aliases.join(", ")}
+                          <div className="font-saveful text-saveful-gray">
+                            No ingredients found
                           </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex rounded-full bg-gradient-to-r from-saveful-green/20 to-saveful-green/10 px-3 py-1.5 font-saveful-semibold text-xs text-saveful-green shadow-sm">
-                          {ingredient.category?.name || "Uncategorized"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-wrap gap-1.5">
-                          {ingredient.isVeg && (
-                            <span className="rounded-full bg-green-100 px-2.5 py-1 font-saveful-semibold text-xs text-green-700 shadow-sm">
-                              Veg
-                            </span>
-                          )}
-                          {ingredient.isVegan && (
-                            <span className="rounded-full bg-green-100 px-2.5 py-1 font-saveful-semibold text-xs text-green-700 shadow-sm">
-                              Vegan
-                            </span>
-                          )}
-                          {!ingredient.isGluten && (
-                            <span className="rounded-full bg-blue-100 px-2.5 py-1 font-saveful-semibold text-xs text-blue-700 shadow-sm">
-                              GF
-                            </span>
-                          )}
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex gap-2">
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => handleEdit(ingredient)}
-                            className="rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 p-2.5 text-white shadow-md transition-all hover:shadow-lg"
-                          >
-                            <FontAwesomeIcon icon={faEdit} />
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => {
-                              setIngredientToDelete(ingredient);
-                              setShowDeleteModal(true);
-                            }}
-                            className="rounded-lg bg-gradient-to-r from-red-500 to-red-600 p-2.5 text-white shadow-md transition-all hover:shadow-lg"
-                          >
-                            <FontAwesomeIcon icon={faTrash} />
-                          </motion.button>
-                        </div>
-                      </td>
-                    </motion.tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </motion.div>
+                    </tr>
+                  ) : (
+                    filteredIngredients.map((ingredient, index) => (
+                      <motion.tr
+                        key={ingredient.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="group transition-colors hover:bg-gradient-to-r hover:from-saveful-green/5 hover:to-transparent"
+                      >
+                        <td className="px-6 py-4">
+                          {ingredient.imageUrl ? (
+                            <div className="relative h-14 w-14 overflow-hidden rounded-xl shadow-md transition-transform group-hover:scale-110">
+                              <Image
+                                src={ingredient.imageUrl}
+                                alt={ingredient.name}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-gray-100 to-gray-50 shadow-sm transition-transform group-hover:scale-110">
+                              <FontAwesomeIcon
+                                icon={faLeaf}
+                                className="text-xl text-gray-400"
+                              />
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="font-saveful-semibold text-saveful-black">
+                            {ingredient.name}
+                          </div>
+                          {ingredient.aliases && ingredient.aliases.length > 0 && (
+                            <div className="mt-1 font-saveful text-xs text-gray-500 truncate max-w-xs">
+                              {ingredient.aliases.join(", ")}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex rounded-full bg-gradient-to-r from-saveful-green/20 to-saveful-green/10 px-3 py-1.5 font-saveful-semibold text-xs text-saveful-green shadow-sm">
+                            {ingredient.category?.name || "Uncategorized"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-wrap gap-1.5">
+                            {getActiveDietTags(ingredient).length > 0 ? (
+                              getActiveDietTags(ingredient).map((tag) => (
+                                <span
+                                  key={tag}
+                                  className="rounded-full bg-green-100 px-2.5 py-1 font-saveful-semibold text-xs text-green-700 shadow-sm whitespace-nowrap"
+                                >
+                                  {tag}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="rounded-full bg-gray-100 px-2.5 py-1 font-saveful-semibold text-xs text-gray-500 shadow-sm">
+                                No tags
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex gap-2">
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => handleEdit(ingredient)}
+                              className="rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 p-2.5 text-white shadow-md transition-all hover:shadow-lg"
+                            >
+                              <FontAwesomeIcon icon={faEdit} />
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => {
+                                setIngredientToDelete(ingredient);
+                                setShowDeleteModal(true);
+                              }}
+                              className="rounded-lg bg-gradient-to-r from-red-500 to-red-600 p-2.5 text-white shadow-md transition-all hover:shadow-lg"
+                            >
+                              <FontAwesomeIcon icon={faTrash} />
+                            </motion.button>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+        </div>
 
         {/* Category Modal */}
         <AnimatePresence>
@@ -726,7 +674,6 @@ export default function IngredientsPage() {
                 className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* Background Decoration */}
                 <div className="pointer-events-none absolute right-0 top-0 opacity-5">
                   <Image
                     src="/profile-green-apples.png"
@@ -817,7 +764,13 @@ export default function IngredientsPage() {
                         disabled={isSubmitting}
                         className="flex-1 rounded-xl bg-gradient-to-r from-saveful-purple to-saveful-purple/80 py-2.5 font-saveful-semibold text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-50"
                       >
-                        {isSubmitting ? (editingCategory ? "Updating..." : "Creating...") : (editingCategory ? "Update" : "Create")}
+                        {isSubmitting
+                          ? editingCategory
+                            ? "Updating..."
+                            : "Creating..."
+                          : editingCategory
+                            ? "Update"
+                            : "Create"}
                       </motion.button>
                     </div>
                   </form>
@@ -827,58 +780,49 @@ export default function IngredientsPage() {
           )}
         </AnimatePresence>
 
-        {/* Ingredient Modal */}
+        {/* Ingredient Modal - FIXED VERSION */}
         <AnimatePresence>
           {showModal && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto backdrop-blur-sm"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm overflow-y-auto p-4"
               onClick={() => !isSubmitting && setShowModal(false)}
             >
               <motion.div
                 initial={{ scale: 0.9, y: 20 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.9, y: 20 }}
-                className="relative my-8 w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl"
+                className="relative my-8 w-full max-w-4xl rounded-2xl bg-white shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* Background Decoration */}
-                <div className="pointer-events-none absolute right-0 top-0 opacity-5">
-                  <Image
-                    src="/Illustration@2x.png"
-                    alt=""
-                    width={300}
-                    height={300}
-                    className="object-contain"
-                  />
+                {/* Fixed Header */}
+                <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white p-6 rounded-t-2xl">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-xl bg-gradient-to-br from-saveful-green/20 to-saveful-green/10 p-3">
+                      <FontAwesomeIcon icon={faLeaf} className="h-6 w-6 text-saveful-green" />
+                    </div>
+                    <h2 className="font-saveful-bold text-2xl text-saveful-green">
+                      {editingIngredient ? "Edit" : "Create"} Ingredient
+                    </h2>
+                  </div>
+                  <motion.button
+                    whileHover={{ scale: 1.1, rotate: 90 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => {
+                      setShowModal(false);
+                      resetForm();
+                    }}
+                    disabled={isSubmitting}
+                    className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                  >
+                    <FontAwesomeIcon icon={faTimes} />
+                  </motion.button>
                 </div>
 
-                <div className="relative p-6 max-h-[90vh] overflow-y-auto">
-                  <div className="mb-6 flex items-center justify-between sticky top-0 bg-white z-10 pb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="rounded-xl bg-gradient-to-br from-saveful-green/20 to-saveful-green/10 p-3">
-                        <FontAwesomeIcon icon={faLeaf} className="h-6 w-6 text-saveful-green" />
-                      </div>
-                      <h2 className="font-saveful-bold text-2xl text-saveful-green">
-                        {editingIngredient ? "Edit" : "Create"} Ingredient
-                      </h2>
-                    </div>
-                    <motion.button
-                      whileHover={{ scale: 1.1, rotate: 90 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => {
-                        setShowModal(false);
-                        resetForm();
-                      }}
-                      disabled={isSubmitting}
-                      className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
-                    >
-                      <FontAwesomeIcon icon={faTimes} />
-                    </motion.button>
-                  </div>
-
+                {/* Scrollable Content */}
+                <div className="max-h-[70vh] overflow-y-auto p-6">
                   <form onSubmit={handleSubmitIngredient} className="space-y-6">
                     {/* Basic Info */}
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -911,7 +855,9 @@ export default function IngredientsPage() {
                             setIngredientForm({
                               ...ingredientForm,
                               averageWeight:
-                                e.target.value === "" ? undefined : Number(e.target.value),
+                                e.target.value === ""
+                                  ? undefined
+                                  : Number(e.target.value),
                             })
                           }
                           className="w-full rounded-xl border-2 border-gray-200 px-4 py-2.5 font-saveful transition-all focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
@@ -944,41 +890,44 @@ export default function IngredientsPage() {
                       </select>
                     </div>
 
-                    {/* Suitable Diets - FIXED VERSION */}
+                    {/* Suitable Diets - FIXED */}
                     <div>
                       <label className="mb-3 block font-saveful-semibold text-sm text-gray-700">
                         Suitable Diets *
                       </label>
                       <div className="flex flex-wrap gap-3">
                         {SUITABLE_DIETS.map((diet) => {
-                          // Explicitly check if the value is exactly true
-                          const isChecked = ingredientForm[diet.key as keyof CreateIngredientDto] === true;
+                          const isChecked =
+                            ingredientForm[
+                              diet.key as keyof CreateIngredientDto
+                            ] === true;
                           return (
                             <label
                               key={diet.key}
                               className={`group flex items-center gap-2 rounded-xl border-2 px-4 py-3 cursor-pointer transition-all hover:border-saveful-green hover:shadow-md ${
-                                isChecked 
-                                  ? 'border-saveful-green bg-saveful-green/10' 
-                                  : 'border-gray-200 bg-gradient-to-r from-gray-50 to-white'
+                                isChecked
+                                  ? "border-saveful-green bg-saveful-green/10"
+                                  : "border-gray-200 bg-gradient-to-r from-gray-50 to-white"
                               }`}
                             >
                               <input
                                 type="checkbox"
                                 checked={isChecked}
                                 onChange={(e) => {
-                                  const newValue = e.target.checked;
-                                  console.log(`${diet.label} (${diet.key}) changed to:`, newValue);
-                                  // Use functional update to ensure we're working with latest state
-                                  setIngredientForm(prev => ({
+                                  setIngredientForm((prev) => ({
                                     ...prev,
-                                    [diet.key]: newValue,
+                                    [diet.key]: e.target.checked,
                                   }));
                                 }}
                                 className="h-5 w-5 rounded border-gray-300 text-saveful-green transition-all focus:ring-2 focus:ring-saveful-green"
                               />
-                              <span className={`font-saveful-semibold text-sm transition-colors ${
-                                isChecked ? 'text-saveful-green' : 'text-gray-700 group-hover:text-saveful-green'
-                              }`}>
+                              <span
+                                className={`font-saveful-semibold text-sm transition-colors ${
+                                  isChecked
+                                    ? "text-saveful-green"
+                                    : "text-gray-700 group-hover:text-saveful-green"
+                                }`}
+                              >
                                 {diet.label}
                               </span>
                             </label>
@@ -988,11 +937,13 @@ export default function IngredientsPage() {
                     </div>
 
                     {/* Has Page Toggle */}
-                    <div className={`flex items-center gap-3 rounded-xl border-2 p-4 transition-all hover:shadow-md ${
-                      ingredientForm.hasPage 
-                        ? 'border-saveful-green bg-saveful-green/5' 
-                        : 'border-gray-200 bg-gradient-to-r from-gray-50 to-transparent'
-                    }`}>
+                    <div
+                      className={`flex items-center gap-3 rounded-xl border-2 p-4 transition-all hover:shadow-md ${
+                        ingredientForm.hasPage
+                          ? "border-saveful-green bg-saveful-green/5"
+                          : "border-gray-200 bg-gradient-to-r from-gray-50 to-transparent"
+                      }`}
+                    >
                       <input
                         type="checkbox"
                         id="hasPage"
@@ -1090,7 +1041,7 @@ export default function IngredientsPage() {
                                 value={aliasInput}
                                 onChange={(e) => setAliasInput(e.target.value)}
                                 onKeyPress={(e) => {
-                                  if (e.key === 'Enter') {
+                                  if (e.key === "Enter") {
                                     e.preventDefault();
                                     addAlias();
                                   }
@@ -1107,21 +1058,26 @@ export default function IngredientsPage() {
                               </button>
                             </div>
                             <div className="flex flex-wrap gap-2">
-                              {(ingredientForm.aliases || []).map((alias, index) => (
-                                <span
-                                  key={index}
-                                  className="inline-flex items-center gap-1 rounded-full bg-saveful-green/20 px-3 py-1 text-sm font-saveful text-saveful-green"
-                                >
-                                  {alias}
-                                  <button
-                                    type="button"
-                                    onClick={() => removeAlias(index)}
-                                    className="ml-1 hover:text-red-600"
+                              {(ingredientForm.aliases || []).map(
+                                (alias, index) => (
+                                  <span
+                                    key={index}
+                                    className="inline-flex items-center gap-1 rounded-full bg-saveful-green/20 px-3 py-1 text-sm font-saveful text-saveful-green"
                                   >
-                                    <FontAwesomeIcon icon={faTimes} className="h-3 w-3" />
-                                  </button>
-                                </span>
-                              ))}
+                                    {alias}
+                                    <button
+                                      type="button"
+                                      onClick={() => removeAlias(index)}
+                                      className="ml-1 hover:text-red-600"
+                                    >
+                                      <FontAwesomeIcon
+                                        icon={faTimes}
+                                        className="h-3 w-3"
+                                      />
+                                    </button>
+                                  </span>
+                                ),
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1138,7 +1094,7 @@ export default function IngredientsPage() {
                                 value={tagInput}
                                 onChange={(e) => setTagInput(e.target.value)}
                                 onKeyPress={(e) => {
-                                  if (e.key === 'Enter') {
+                                  if (e.key === "Enter") {
                                     e.preventDefault();
                                     addTag();
                                   }
@@ -1166,7 +1122,10 @@ export default function IngredientsPage() {
                                     onClick={() => removeTag(index)}
                                     className="ml-1 hover:text-red-600"
                                   >
-                                    <FontAwesomeIcon icon={faTimes} className="h-3 w-3" />
+                                    <FontAwesomeIcon
+                                      icon={faTimes}
+                                      className="h-3 w-3"
+                                    />
                                   </button>
                                 </span>
                               ))}
@@ -1219,14 +1178,15 @@ export default function IngredientsPage() {
                           </label>
                           <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
                             {MONTHS.map((month) => {
-                              const isSelected = ingredientForm.inSeasonMonths?.includes(month);
+                              const isSelected =
+                                ingredientForm.inSeasonMonths?.includes(month);
                               return (
                                 <label
                                   key={month}
                                   className={`flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer transition-all ${
-                                    isSelected 
-                                      ? 'border-saveful-green bg-saveful-green/10' 
-                                      : 'border-gray-200 bg-white hover:bg-gray-50'
+                                    isSelected
+                                      ? "border-saveful-green bg-saveful-green/10"
+                                      : "border-gray-200 bg-white hover:bg-gray-50"
                                   }`}
                                 >
                                   <input
@@ -1235,9 +1195,13 @@ export default function IngredientsPage() {
                                     onChange={() => toggleMonth(month)}
                                     className="h-4 w-4 rounded border-gray-300 text-saveful-green focus:ring-saveful-green"
                                   />
-                                  <span className={`font-saveful text-sm ${
-                                    isSelected ? 'text-saveful-green font-semibold' : 'text-gray-700'
-                                  }`}>
+                                  <span
+                                    className={`font-saveful text-sm ${
+                                      isSelected
+                                        ? "text-saveful-green font-semibold"
+                                        : "text-gray-700"
+                                    }`}
+                                  >
                                     {month}
                                   </span>
                                 </label>
@@ -1247,11 +1211,13 @@ export default function IngredientsPage() {
                         </div>
 
                         {/* Pantry Item */}
-                        <div className={`flex items-center gap-3 rounded-lg border-2 p-3 ${
-                          ingredientForm.isPantryItem 
-                            ? 'border-saveful-green bg-saveful-green/10' 
-                            : 'border-gray-200'
-                        }`}>
+                        <div
+                          className={`flex items-center gap-3 rounded-lg border-2 p-3 ${
+                            ingredientForm.isPantryItem
+                              ? "border-saveful-green bg-saveful-green/10"
+                              : "border-gray-200"
+                          }`}
+                        >
                           <input
                             type="checkbox"
                             id="isPantryItem"
@@ -1273,38 +1239,41 @@ export default function IngredientsPage() {
                         </div>
                       </motion.div>
                     )}
-
-                    {/* Submit Buttons */}
-                    <div className="flex gap-3 pt-6 border-t border-gray-200 sticky bottom-0 bg-white">
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        type="button"
-                        onClick={() => {
-                          setShowModal(false);
-                          resetForm();
-                        }}
-                        disabled={isSubmitting}
-                        className="flex-1 rounded-xl border-2 border-gray-200 py-3 font-saveful-semibold text-gray-700 transition-all hover:bg-gray-50"
-                      >
-                        Cancel
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-saveful-green to-saveful-green/80 py-3 font-saveful-semibold text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-50"
-                      >
-                        <FontAwesomeIcon icon={faSave} />
-                        {isSubmitting
-                          ? "Saving..."
-                          : editingIngredient
-                            ? "Update"
-                            : "Create"}
-                      </motion.button>
-                    </div>
                   </form>
+                </div>
+
+                {/* Fixed Footer */}
+                <div className="sticky bottom-0 border-t border-gray-200 bg-white p-6 rounded-b-2xl">
+                  <div className="flex gap-3">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      type="button"
+                      onClick={() => {
+                        setShowModal(false);
+                        resetForm();
+                      }}
+                      disabled={isSubmitting}
+                      className="flex-1 rounded-xl border-2 border-gray-200 py-3 font-saveful-semibold text-gray-700 transition-all hover:bg-gray-50"
+                    >
+                      Cancel
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      type="submit"
+                      onClick={handleSubmitIngredient}
+                      disabled={isSubmitting}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-saveful-green to-saveful-green/80 py-3 font-saveful-semibold text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-50"
+                    >
+                      <FontAwesomeIcon icon={faSave} />
+                      {isSubmitting
+                        ? "Saving..."
+                        : editingIngredient
+                          ? "Update"
+                          : "Create"}
+                    </motion.button>
+                  </div>
                 </div>
               </motion.div>
             </motion.div>
@@ -1331,7 +1300,10 @@ export default function IngredientsPage() {
                 <div className="p-6">
                   <div className="mb-4 flex items-center gap-3">
                     <div className="rounded-xl bg-gradient-to-br from-red-500/20 to-red-500/10 p-3">
-                      <FontAwesomeIcon icon={faTrash} className="h-6 w-6 text-red-600" />
+                      <FontAwesomeIcon
+                        icon={faTrash}
+                        className="h-6 w-6 text-red-600"
+                      />
                     </div>
                     <h3 className="font-saveful-bold text-xl text-red-600">
                       Delete Category
@@ -1342,7 +1314,8 @@ export default function IngredientsPage() {
                     <span className="font-saveful-semibold text-saveful-black">
                       {categoryToDelete.name}
                     </span>
-                    ? This action cannot be undone and will affect all ingredients in this category.
+                    ? This action cannot be undone and will affect all ingredients
+                    in this category.
                   </p>
                   <div className="flex gap-3">
                     <motion.button
@@ -1370,7 +1343,7 @@ export default function IngredientsPage() {
           )}
         </AnimatePresence>
 
-        {/* Delete Confirmation Modal */}
+        {/* Delete Ingredient Confirmation Modal */}
         <AnimatePresence>
           {showDeleteModal && ingredientToDelete && (
             <motion.div
@@ -1387,7 +1360,6 @@ export default function IngredientsPage() {
                 className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* Background Decoration */}
                 <div className="pointer-events-none absolute right-0 top-0 opacity-5">
                   <Image
                     src="/eggplant-survey.png"
@@ -1401,7 +1373,10 @@ export default function IngredientsPage() {
                 <div className="relative p-6">
                   <div className="mb-4 flex items-center gap-3">
                     <div className="rounded-xl bg-gradient-to-br from-red-500/20 to-red-500/10 p-3">
-                      <FontAwesomeIcon icon={faTrash} className="h-6 w-6 text-red-600" />
+                      <FontAwesomeIcon
+                        icon={faTrash}
+                        className="h-6 w-6 text-red-600"
+                      />
                     </div>
                     <h3 className="font-saveful-bold text-xl text-red-600">
                       Delete Ingredient
@@ -1462,7 +1437,10 @@ export default function IngredientsPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="rounded-xl bg-white/20 p-2.5 backdrop-blur-sm">
-                        <FontAwesomeIcon icon={faSearch} className="h-5 w-5 text-white" />
+                        <FontAwesomeIcon
+                          icon={faSearch}
+                          className="h-5 w-5 text-white"
+                        />
                       </div>
                       <h3 className="font-saveful-bold text-2xl text-white">
                         All Categories ({categories.length})
@@ -1528,7 +1506,10 @@ export default function IngredientsPage() {
                                 className="rounded-lg p-2 text-saveful-green hover:bg-saveful-green/10 transition-colors"
                                 title="Edit category"
                               >
-                                <FontAwesomeIcon icon={faEdit} className="h-4 w-4" />
+                                <FontAwesomeIcon
+                                  icon={faEdit}
+                                  className="h-4 w-4"
+                                />
                               </button>
                               <button
                                 onClick={() => {
@@ -1538,7 +1519,10 @@ export default function IngredientsPage() {
                                 className="rounded-lg p-2 text-red-500 hover:bg-red-50 transition-colors"
                                 title="Delete category"
                               >
-                                <FontAwesomeIcon icon={faTrash} className="h-4 w-4" />
+                                <FontAwesomeIcon
+                                  icon={faTrash}
+                                  className="h-4 w-4"
+                                />
                               </button>
                             </div>
                           </div>
@@ -1548,8 +1532,12 @@ export default function IngredientsPage() {
                             </div>
                           )}
                           <div className="flex items-center gap-2 font-saveful text-xs text-gray-500">
-                            <FontAwesomeIcon icon={faCalendar} className="h-3 w-3" />
-                            Created: {new Date(category.createdAt).toLocaleDateString()}
+                            <FontAwesomeIcon
+                              icon={faCalendar}
+                              className="h-3 w-3"
+                            />
+                            Created:{" "}
+                            {new Date(category.createdAt).toLocaleDateString()}
                           </div>
                         </motion.div>
                       ))}
@@ -1561,7 +1549,6 @@ export default function IngredientsPage() {
           )}
         </AnimatePresence>
       </div>
-    </div>
     </DashboardLayout>
   );
 }
