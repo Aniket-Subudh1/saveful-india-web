@@ -150,11 +150,9 @@ export default function IngredientsPage() {
 
     try {
       if (editingCategory) {
-        // Update existing category
         await ingredientManagementService.updateCategory(editingCategory.id, categoryForm);
         setEditingCategory(null);
       } else {
-        // Create new category
         await ingredientManagementService.createCategory(categoryForm);
       }
       setCategoryForm({ name: "", description: "" });
@@ -204,38 +202,68 @@ export default function IngredientsPage() {
     setIsSubmitting(true);
 
     try {
-      // Ensure all boolean fields are properly set
-      const submissionData = {
-        ...ingredientForm,
-        isVeg: Boolean(ingredientForm.isVeg),
-        isVegan: Boolean(ingredientForm.isVegan),
-        isDairy: Boolean(ingredientForm.isDairy),
-        isNut: Boolean(ingredientForm.isNut),
-        isGluten: Boolean(ingredientForm.isGluten),
-        hasPage: Boolean(ingredientForm.hasPage),
-        isPantryItem: Boolean(ingredientForm.isPantryItem),
+      // Base submission data
+      const baseData: CreateIngredientDto = {
+        name: ingredientForm.name,
+        aliases: ingredientForm.aliases || [],
+        description: ingredientForm.description || "",
+        nutritionInfo: ingredientForm.nutritionInfo || "",
+        categoryId: ingredientForm.categoryId || "",
+        tags: ingredientForm.tags || [],
+        theme: ingredientForm.theme || "Green",
+        inSeasonMonths: ingredientForm.inSeasonMonths || [],
+        averageWeight: ingredientForm.averageWeight,
+        heroImage: ingredientForm.heroImage,
       };
 
-      // Debug logging
-      console.log("Submitting ingredient data:", submissionData);
-      console.log("Boolean values:", {
-        isVeg: submissionData.isVeg,
-        isVegan: submissionData.isVegan,
-        isDairy: submissionData.isDairy,
-        isNut: submissionData.isNut,
-        isGluten: submissionData.isGluten,
-        hasPage: submissionData.hasPage,
-        isPantryItem: submissionData.isPantryItem,
-      });
-
+      // For CREATE: only include true boolean values (backend defaults to false)
+      // For UPDATE: include all boolean values explicitly
       if (editingIngredient) {
+        // UPDATE mode - send all boolean values
+        const submissionData: CreateIngredientDto = {
+          ...baseData,
+          isVeg: ingredientForm.isVeg === true,
+          isVegan: ingredientForm.isVegan === true,
+          isDairy: ingredientForm.isDairy === true,
+          isNut: ingredientForm.isNut === true,
+          isGluten: ingredientForm.isGluten === true,
+          hasPage: ingredientForm.hasPage === true,
+          isPantryItem: ingredientForm.isPantryItem === true,
+        };
+
+        console.log("Updating ingredient:", submissionData);
         await ingredientManagementService.updateIngredient(
           editingIngredient.id,
           submissionData
         );
       } else {
+        // CREATE mode - only include true values
+        const submissionData: CreateIngredientDto = {
+          ...baseData,
+          // Only add boolean fields if they're true
+          ...(ingredientForm.isVeg === true && { isVeg: true }),
+          ...(ingredientForm.isVegan === true && { isVegan: true }),
+          ...(ingredientForm.isDairy === true && { isDairy: true }),
+          ...(ingredientForm.isNut === true && { isNut: true }),
+          ...(ingredientForm.isGluten === true && { isGluten: true }),
+          ...(ingredientForm.hasPage === true && { hasPage: true }),
+          ...(ingredientForm.isPantryItem === true && { isPantryItem: true }),
+        };
+
+        console.log("Creating ingredient:", submissionData);
+        console.log("Boolean values that are TRUE:", {
+          isVeg: submissionData.isVeg,
+          isVegan: submissionData.isVegan,
+          isDairy: submissionData.isDairy,
+          isNut: submissionData.isNut,
+          isGluten: submissionData.isGluten,
+          hasPage: submissionData.hasPage,
+          isPantryItem: submissionData.isPantryItem,
+        });
+
         await ingredientManagementService.createIngredient(submissionData);
       }
+
       resetForm();
       setShowModal(false);
       await loadData();
@@ -250,6 +278,18 @@ export default function IngredientsPage() {
   };
 
   const handleEdit = (ingredient: Ingredient) => {
+    console.log("=== EDITING INGREDIENT ===");
+    console.log("Raw ingredient data from database:", ingredient);
+    console.log("Boolean values in DB:", {
+      isVeg: ingredient.isVeg,
+      isVegan: ingredient.isVegan,
+      isDairy: ingredient.isDairy,
+      isNut: ingredient.isNut,
+      isGluten: ingredient.isGluten,
+      hasPage: ingredient.hasPage,
+      isPantryItem: ingredient.isPantryItem,
+    });
+    
     setEditingIngredient(ingredient);
     setIngredientForm({
       name: ingredient.name,
@@ -257,16 +297,17 @@ export default function IngredientsPage() {
       description: ingredient.description || "",
       nutritionInfo: ingredient.nutritionInfo || "",
       categoryId: ingredient.categoryId || "",
-      isVeg: ingredient.isVeg,
-      isVegan: ingredient.isVegan,
-      isDairy: ingredient.isDairy,
-      isNut: ingredient.isNut,
-      isGluten: ingredient.isGluten,
+      // Ensure we're setting actual boolean values
+      isVeg: ingredient.isVeg === true,
+      isVegan: ingredient.isVegan === true,
+      isDairy: ingredient.isDairy === true,
+      isNut: ingredient.isNut === true,
+      isGluten: ingredient.isGluten === true,
       tags: ingredient.tags || [],
-      hasPage: ingredient.hasPage || false,
+      hasPage: ingredient.hasPage === true,
       theme: ingredient.theme || "Green",
       inSeasonMonths: ingredient.inSeasonMonths || [],
-      isPantryItem: ingredient.isPantryItem || false,
+      isPantryItem: ingredient.isPantryItem === true,
       averageWeight: ingredient.averageWeight ?? undefined,
     });
     if (ingredient.imageUrl) {
@@ -274,15 +315,14 @@ export default function IngredientsPage() {
     }
     setShowModal(true);
     
-    // Log for debugging
     console.log("Editing ingredient:", ingredient);
-    console.log("Form populated with:", {
-      isVeg: ingredient.isVeg,
-      isVegan: ingredient.isVegan,
-      isDairy: ingredient.isDairy,
-      isNut: ingredient.isNut,
-      isGluten: ingredient.isGluten,
-      hasPage: ingredient.hasPage,
+    console.log("Form populated with boolean values:", {
+      isVeg: ingredient.isVeg === true,
+      isVegan: ingredient.isVegan === true,
+      isDairy: ingredient.isDairy === true,
+      isNut: ingredient.isNut === true,
+      isGluten: ingredient.isGluten === true,
+      hasPage: ingredient.hasPage === true,
     });
   };
 
@@ -704,13 +744,17 @@ export default function IngredientsPage() {
                         <FontAwesomeIcon icon={faTag} className="h-6 w-6 text-saveful-purple" />
                       </div>
                       <h2 className="font-saveful-bold text-2xl text-saveful-green">
-                        Create Category
+                        {editingCategory ? "Edit" : "Create"} Category
                       </h2>
                     </div>
                     <motion.button
                       whileHover={{ scale: 1.1, rotate: 90 }}
                       whileTap={{ scale: 0.9 }}
-                      onClick={() => setShowCategoryModal(false)}
+                      onClick={() => {
+                        setShowCategoryModal(false);
+                        setEditingCategory(null);
+                        setCategoryForm({ name: "", description: "" });
+                      }}
                       disabled={isSubmitting}
                       className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
                     >
@@ -811,8 +855,8 @@ export default function IngredientsPage() {
                   />
                 </div>
 
-                <div className="relative p-6">
-                  <div className="mb-6 flex items-center justify-between">
+                <div className="relative p-6 max-h-[90vh] overflow-y-auto">
+                  <div className="mb-6 flex items-center justify-between sticky top-0 bg-white z-10 pb-4">
                     <div className="flex items-center gap-3">
                       <div className="rounded-xl bg-gradient-to-br from-saveful-green/20 to-saveful-green/10 p-3">
                         <FontAwesomeIcon icon={faLeaf} className="h-6 w-6 text-saveful-green" />
@@ -824,7 +868,10 @@ export default function IngredientsPage() {
                     <motion.button
                       whileHover={{ scale: 1.1, rotate: 90 }}
                       whileTap={{ scale: 0.9 }}
-                      onClick={() => setShowModal(false)}
+                      onClick={() => {
+                        setShowModal(false);
+                        resetForm();
+                      }}
                       disabled={isSubmitting}
                       className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
                     >
@@ -873,335 +920,370 @@ export default function IngredientsPage() {
                     </div>
 
                     {/* Category */}
-                    <div className="grid grid-cols-1 gap-6 md:grid-cols-1">
-                      <div>
-                        <label className="mb-2 block font-saveful-semibold text-sm text-gray-700">
-                          Ingredient Category *
-                        </label>
-                        <select
-                          value={ingredientForm.categoryId}
-                          onChange={(e) =>
-                            setIngredientForm({
-                              ...ingredientForm,
-                              categoryId: e.target.value,
-                            })
-                          }
-                          required
-                          className="w-full rounded-xl border-2 border-gray-200 px-4 py-2.5 font-saveful transition-all focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
-                        >
-                          <option value="">Select category...</option>
-                          {categories.map((cat) => (
-                            <option key={cat.id} value={cat.id}>
+                    <div>
+                      <label className="mb-2 block font-saveful-semibold text-sm text-gray-700">
+                        Ingredient Category *
+                      </label>
+                      <select
+                        value={ingredientForm.categoryId}
+                        onChange={(e) =>
+                          setIngredientForm({
+                            ...ingredientForm,
+                            categoryId: e.target.value,
+                          })
+                        }
+                        required
+                        className="w-full rounded-xl border-2 border-gray-200 px-4 py-2.5 font-saveful transition-all focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
+                      >
+                        <option value="">Select category...</option>
+                        {categories.map((cat) => (
+                          <option key={cat.id} value={cat.id}>
                             {cat.name}
                           </option>
                         ))}
                       </select>
                     </div>
-                  </div>
 
-                  {/* Suitable Diets */}
-                  <div>
-                    <label className="mb-3 block font-saveful-semibold text-sm text-gray-700">
-                      Suitable Diets *
-                    </label>
-                    <div className="flex flex-wrap gap-3">
-                      {SUITABLE_DIETS.map((diet) => {
-                        const isChecked = Boolean(ingredientForm[diet.key as keyof typeof ingredientForm]);
-                        return (
-                          <label
-                            key={diet.key}
-                            className="group flex items-center gap-2 rounded-xl border-2 border-gray-200 bg-gradient-to-r from-gray-50 to-white px-4 py-3 cursor-pointer transition-all hover:border-saveful-green hover:shadow-md"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={(e) => {
-                                console.log(`${diet.label} checkbox changed:`, e.target.checked);
-                                const newForm = {
-                                  ...ingredientForm,
-                                  [diet.key]: e.target.checked,
-                                };
-                                console.log(`Updated form state for ${diet.key}:`, newForm[diet.key as keyof typeof newForm]);
-                                setIngredientForm(newForm);
-                              }}
-                              className="h-5 w-5 rounded border-gray-300 text-saveful-green transition-all focus:ring-2 focus:ring-saveful-green"
-                            />
-                            <span className="font-saveful-semibold text-sm text-gray-700 group-hover:text-saveful-green">
-                              {diet.label}
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Has Page Toggle */}
-                  <div className="flex items-center gap-3 rounded-xl border-2 border-gray-200 bg-gradient-to-r from-saveful-green/5 to-transparent p-4 transition-all hover:border-saveful-green hover:shadow-md">
-                    <input
-                      type="checkbox"
-                      id="hasPage"
-                      checked={ingredientForm.hasPage}
-                      onChange={(e) =>
-                        setIngredientForm({
-                          ...ingredientForm,
-                          hasPage: e.target.checked,
-                        })
-                      }
-                      className="h-6 w-6 rounded border-gray-300 text-saveful-green transition-all focus:ring-2 focus:ring-saveful-green"
-                    />
-                    <label
-                      htmlFor="hasPage"
-                      className="font-saveful-semibold text-sm text-gray-700 cursor-pointer"
-                    >
-                      Ingredient has page
-                    </label>
-                  </div>
-
-                  {/* Conditional Fields */}
-                  {ingredientForm.hasPage && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="space-y-6 rounded-lg border-2 border-saveful-green/20 bg-saveful-green/5 p-6"
-                    >
-                      {/* Hero Image */}
-                      <div>
-                        <label className="mb-2 block font-lato text-sm font-semibold text-gray-700">
-                          Hero Image *
-                        </label>
-                        <div className="flex items-center gap-4">
-                          <label className="flex cursor-pointer items-center gap-2 rounded-lg border-2 border-dashed border-gray-300 px-4 py-3 transition-colors hover:border-saveful-green hover:bg-saveful-green/5">
-                            <FontAwesomeIcon
-                              icon={faUpload}
-                              className="text-gray-400"
-                            />
-                            <span className="font-lato text-sm text-gray-600">
-                              Upload Image
-                            </span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={handleImageUpload}
-                              className="hidden"
-                            />
-                          </label>
-                          {heroImagePreview && (
-                            <div className="relative h-20 w-20 overflow-hidden rounded-lg">
-                              <Image
-                                src={heroImagePreview}
-                                alt="Preview"
-                                fill
-                                className="object-cover"
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Theme */}
-                      <div>
-                        <label className="mb-2 block font-lato text-sm font-semibold text-gray-700">
-                          Ingredient Theme *
-                        </label>
-                        <select
-                          value={ingredientForm.theme}
-                          onChange={(e) =>
-                            setIngredientForm({
-                              ...ingredientForm,
-                              theme: e.target.value,
-                            })
-                          }
-                          className="w-full rounded-lg border border-gray-300 px-4 py-2 font-lato focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
-                        >
-                          {THEMES.map((theme) => (
-                            <option key={theme} value={theme}>
-                              {theme}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Aliases */}
-                      <div>
-                        <label className="mb-2 block font-saveful-semibold text-sm text-gray-700">
-                          Aliases
-                        </label>
-                        <div className="space-y-3">
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              value={aliasInput}
-                              onChange={(e) => setAliasInput(e.target.value)}
-                              placeholder="Add an alias..."
-                              className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-saveful focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
-                            />
-                            <button
-                              type="button"
-                              onClick={addAlias}
-                              className="rounded-lg bg-saveful-green px-4 py-2 font-saveful-semibold text-white hover:bg-saveful-green/90"
-                            >
-                              <FontAwesomeIcon icon={faPlus} />
-                            </button>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {(ingredientForm.aliases || []).map((alias, index) => (
-                              <span
-                                key={index}
-                                className="inline-flex items-center gap-1 rounded-full bg-saveful-green/20 px-3 py-1 text-sm font-saveful text-saveful-green"
-                              >
-                                {alias}
-                                <button
-                                  type="button"
-                                  onClick={() => removeAlias(index)}
-                                  className="ml-1 hover:text-red-600"
-                                >
-                                  <FontAwesomeIcon icon={faTimes} className="h-3 w-3" />
-                                </button>
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Tags */}
-                      <div>
-                        <label className="mb-2 block font-saveful-semibold text-sm text-gray-700">
-                          Tags
-                        </label>
-                        <div className="space-y-3">
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              value={tagInput}
-                              onChange={(e) => setTagInput(e.target.value)}
-                              placeholder="Add a tag..."
-                              className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-saveful focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
-                            />
-                            <button
-                              type="button"
-                              onClick={addTag}
-                              className="rounded-lg bg-saveful-green px-4 py-2 font-saveful-semibold text-white hover:bg-saveful-green/90"
-                            >
-                              <FontAwesomeIcon icon={faTag} />
-                            </button>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {(ingredientForm.tags || []).map((tag, index) => (
-                              <span
-                                key={index}
-                                className="inline-flex items-center gap-1 rounded-full bg-saveful-purple/20 px-3 py-1 text-sm font-saveful text-saveful-purple"
-                              >
-                                {tag}
-                                <button
-                                  type="button"
-                                  onClick={() => removeTag(index)}
-                                  className="ml-1 hover:text-red-600"
-                                >
-                                  <FontAwesomeIcon icon={faTimes} className="h-3 w-3" />
-                                </button>
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Description */}
-                      <div>
-                        <label className="mb-2 block font-lato text-sm font-semibold text-gray-700">
-                          Description *
-                        </label>
-                        <textarea
-                          value={ingredientForm.description}
-                          onChange={(e) =>
-                            setIngredientForm({
-                              ...ingredientForm,
-                              description: e.target.value,
-                            })
-                          }
-                          rows={4}
-                          placeholder="Sage is an aromatic herb that belongs to the mint family..."
-                          className="w-full rounded-lg border border-gray-300 px-4 py-2 font-lato focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
-                        />
-                      </div>
-
-                      {/* Nutrition */}
-                      <div>
-                        <label className="mb-2 block font-lato text-sm font-semibold text-gray-700">
-                          Nutrition *
-                        </label>
-                        <textarea
-                          value={ingredientForm.nutritionInfo}
-                          onChange={(e) =>
-                            setIngredientForm({
-                              ...ingredientForm,
-                              nutritionInfo: e.target.value,
-                            })
-                          }
-                          rows={4}
-                          placeholder="Sage contains various compounds, including essential oils and antioxidants..."
-                          className="w-full rounded-lg border border-gray-300 px-4 py-2 font-lato focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
-                        />
-                      </div>
-
-                      {/* In Season */}
-                      <div>
-                        <label className="mb-3 block font-lato text-sm font-semibold text-gray-700">
-                          In Season *
-                        </label>
-                        <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
-                          {MONTHS.map((month) => (
+                    {/* Suitable Diets - FIXED VERSION */}
+                    <div>
+                      <label className="mb-3 block font-saveful-semibold text-sm text-gray-700">
+                        Suitable Diets *
+                      </label>
+                      <div className="flex flex-wrap gap-3">
+                        {SUITABLE_DIETS.map((diet) => {
+                          // Explicitly check if the value is exactly true
+                          const isChecked = ingredientForm[diet.key as keyof CreateIngredientDto] === true;
+                          return (
                             <label
-                              key={month}
-                              className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 cursor-pointer hover:bg-gray-50"
+                              key={diet.key}
+                              className={`group flex items-center gap-2 rounded-xl border-2 px-4 py-3 cursor-pointer transition-all hover:border-saveful-green hover:shadow-md ${
+                                isChecked 
+                                  ? 'border-saveful-green bg-saveful-green/10' 
+                                  : 'border-gray-200 bg-gradient-to-r from-gray-50 to-white'
+                              }`}
                             >
                               <input
                                 type="checkbox"
-                                checked={ingredientForm.inSeasonMonths?.includes(
-                                  month
-                                )}
-                                onChange={() => toggleMonth(month)}
-                                className="h-4 w-4 rounded border-gray-300 text-saveful-green focus:ring-saveful-green"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  const newValue = e.target.checked;
+                                  console.log(`${diet.label} (${diet.key}) changed to:`, newValue);
+                                  // Use functional update to ensure we're working with latest state
+                                  setIngredientForm(prev => ({
+                                    ...prev,
+                                    [diet.key]: newValue,
+                                  }));
+                                }}
+                                className="h-5 w-5 rounded border-gray-300 text-saveful-green transition-all focus:ring-2 focus:ring-saveful-green"
                               />
-                              <span className="font-lato text-sm text-gray-700">
-                                {month}
+                              <span className={`font-saveful-semibold text-sm transition-colors ${
+                                isChecked ? 'text-saveful-green' : 'text-gray-700 group-hover:text-saveful-green'
+                              }`}>
+                                {diet.label}
                               </span>
                             </label>
-                          ))}
-                        </div>
+                          );
+                        })}
                       </div>
+                    </div>
 
-                      {/* Pantry Item */}
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          id="isPantryItem"
-                          checked={ingredientForm.isPantryItem}
-                          onChange={(e) =>
-                            setIngredientForm({
-                              ...ingredientForm,
-                              isPantryItem: e.target.checked,
-                            })
-                          }
-                          className="h-4 w-4 rounded border-gray-300 text-saveful-green focus:ring-saveful-green"
-                        />
-                        <label
-                          htmlFor="isPantryItem"
-                          className="font-lato text-sm text-gray-700"
-                        >
-                          Pantry Item
-                        </label>
-                      </div>
-                    </motion.div>
-                  )}
+                    {/* Has Page Toggle */}
+                    <div className={`flex items-center gap-3 rounded-xl border-2 p-4 transition-all hover:shadow-md ${
+                      ingredientForm.hasPage 
+                        ? 'border-saveful-green bg-saveful-green/5' 
+                        : 'border-gray-200 bg-gradient-to-r from-gray-50 to-transparent'
+                    }`}>
+                      <input
+                        type="checkbox"
+                        id="hasPage"
+                        checked={ingredientForm.hasPage === true}
+                        onChange={(e) =>
+                          setIngredientForm({
+                            ...ingredientForm,
+                            hasPage: e.target.checked,
+                          })
+                        }
+                        className="h-6 w-6 rounded border-gray-300 text-saveful-green transition-all focus:ring-2 focus:ring-saveful-green"
+                      />
+                      <label
+                        htmlFor="hasPage"
+                        className="font-saveful-semibold text-sm text-gray-700 cursor-pointer"
+                      >
+                        Ingredient has page
+                      </label>
+                    </div>
+
+                    {/* Conditional Fields */}
+                    {ingredientForm.hasPage && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="space-y-6 rounded-lg border-2 border-saveful-green/20 bg-saveful-green/5 p-6"
+                      >
+                        {/* Hero Image */}
+                        <div>
+                          <label className="mb-2 block font-saveful-semibold text-sm text-gray-700">
+                            Hero Image *
+                          </label>
+                          <div className="flex items-center gap-4">
+                            <label className="flex cursor-pointer items-center gap-2 rounded-lg border-2 border-dashed border-gray-300 px-4 py-3 transition-colors hover:border-saveful-green hover:bg-saveful-green/5">
+                              <FontAwesomeIcon
+                                icon={faUpload}
+                                className="text-gray-400"
+                              />
+                              <span className="font-saveful text-sm text-gray-600">
+                                Upload Image
+                              </span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageUpload}
+                                className="hidden"
+                              />
+                            </label>
+                            {heroImagePreview && (
+                              <div className="relative h-20 w-20 overflow-hidden rounded-lg">
+                                <Image
+                                  src={heroImagePreview}
+                                  alt="Preview"
+                                  fill
+                                  className="object-cover"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Theme */}
+                        <div>
+                          <label className="mb-2 block font-saveful-semibold text-sm text-gray-700">
+                            Ingredient Theme *
+                          </label>
+                          <select
+                            value={ingredientForm.theme}
+                            onChange={(e) =>
+                              setIngredientForm({
+                                ...ingredientForm,
+                                theme: e.target.value,
+                              })
+                            }
+                            className="w-full rounded-lg border border-gray-300 px-4 py-2 font-saveful focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
+                          >
+                            {THEMES.map((theme) => (
+                              <option key={theme} value={theme}>
+                                {theme}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Aliases */}
+                        <div>
+                          <label className="mb-2 block font-saveful-semibold text-sm text-gray-700">
+                            Aliases
+                          </label>
+                          <div className="space-y-3">
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={aliasInput}
+                                onChange={(e) => setAliasInput(e.target.value)}
+                                onKeyPress={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    addAlias();
+                                  }
+                                }}
+                                placeholder="Add an alias..."
+                                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-saveful focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
+                              />
+                              <button
+                                type="button"
+                                onClick={addAlias}
+                                className="rounded-lg bg-saveful-green px-4 py-2 font-saveful-semibold text-white hover:bg-saveful-green/90"
+                              >
+                                <FontAwesomeIcon icon={faPlus} />
+                              </button>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {(ingredientForm.aliases || []).map((alias, index) => (
+                                <span
+                                  key={index}
+                                  className="inline-flex items-center gap-1 rounded-full bg-saveful-green/20 px-3 py-1 text-sm font-saveful text-saveful-green"
+                                >
+                                  {alias}
+                                  <button
+                                    type="button"
+                                    onClick={() => removeAlias(index)}
+                                    className="ml-1 hover:text-red-600"
+                                  >
+                                    <FontAwesomeIcon icon={faTimes} className="h-3 w-3" />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Tags */}
+                        <div>
+                          <label className="mb-2 block font-saveful-semibold text-sm text-gray-700">
+                            Tags
+                          </label>
+                          <div className="space-y-3">
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={tagInput}
+                                onChange={(e) => setTagInput(e.target.value)}
+                                onKeyPress={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    addTag();
+                                  }
+                                }}
+                                placeholder="Add a tag..."
+                                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-saveful focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
+                              />
+                              <button
+                                type="button"
+                                onClick={addTag}
+                                className="rounded-lg bg-saveful-green px-4 py-2 font-saveful-semibold text-white hover:bg-saveful-green/90"
+                              >
+                                <FontAwesomeIcon icon={faTag} />
+                              </button>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {(ingredientForm.tags || []).map((tag, index) => (
+                                <span
+                                  key={index}
+                                  className="inline-flex items-center gap-1 rounded-full bg-saveful-purple/20 px-3 py-1 text-sm font-saveful text-saveful-purple"
+                                >
+                                  {tag}
+                                  <button
+                                    type="button"
+                                    onClick={() => removeTag(index)}
+                                    className="ml-1 hover:text-red-600"
+                                  >
+                                    <FontAwesomeIcon icon={faTimes} className="h-3 w-3" />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Description */}
+                        <div>
+                          <label className="mb-2 block font-saveful-semibold text-sm text-gray-700">
+                            Description *
+                          </label>
+                          <textarea
+                            value={ingredientForm.description}
+                            onChange={(e) =>
+                              setIngredientForm({
+                                ...ingredientForm,
+                                description: e.target.value,
+                              })
+                            }
+                            rows={4}
+                            placeholder="Sage is an aromatic herb that belongs to the mint family..."
+                            className="w-full rounded-lg border border-gray-300 px-4 py-2 font-saveful focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
+                          />
+                        </div>
+
+                        {/* Nutrition */}
+                        <div>
+                          <label className="mb-2 block font-saveful-semibold text-sm text-gray-700">
+                            Nutrition *
+                          </label>
+                          <textarea
+                            value={ingredientForm.nutritionInfo}
+                            onChange={(e) =>
+                              setIngredientForm({
+                                ...ingredientForm,
+                                nutritionInfo: e.target.value,
+                              })
+                            }
+                            rows={4}
+                            placeholder="Sage contains various compounds, including essential oils and antioxidants..."
+                            className="w-full rounded-lg border border-gray-300 px-4 py-2 font-saveful focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
+                          />
+                        </div>
+
+                        {/* In Season */}
+                        <div>
+                          <label className="mb-3 block font-saveful-semibold text-sm text-gray-700">
+                            In Season *
+                          </label>
+                          <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
+                            {MONTHS.map((month) => {
+                              const isSelected = ingredientForm.inSeasonMonths?.includes(month);
+                              return (
+                                <label
+                                  key={month}
+                                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer transition-all ${
+                                    isSelected 
+                                      ? 'border-saveful-green bg-saveful-green/10' 
+                                      : 'border-gray-200 bg-white hover:bg-gray-50'
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => toggleMonth(month)}
+                                    className="h-4 w-4 rounded border-gray-300 text-saveful-green focus:ring-saveful-green"
+                                  />
+                                  <span className={`font-saveful text-sm ${
+                                    isSelected ? 'text-saveful-green font-semibold' : 'text-gray-700'
+                                  }`}>
+                                    {month}
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Pantry Item */}
+                        <div className={`flex items-center gap-3 rounded-lg border-2 p-3 ${
+                          ingredientForm.isPantryItem 
+                            ? 'border-saveful-green bg-saveful-green/10' 
+                            : 'border-gray-200'
+                        }`}>
+                          <input
+                            type="checkbox"
+                            id="isPantryItem"
+                            checked={ingredientForm.isPantryItem === true}
+                            onChange={(e) =>
+                              setIngredientForm({
+                                ...ingredientForm,
+                                isPantryItem: e.target.checked,
+                              })
+                            }
+                            className="h-4 w-4 rounded border-gray-300 text-saveful-green focus:ring-saveful-green"
+                          />
+                          <label
+                            htmlFor="isPantryItem"
+                            className="font-saveful text-sm text-gray-700 cursor-pointer"
+                          >
+                            Pantry Item
+                          </label>
+                        </div>
+                      </motion.div>
+                    )}
 
                     {/* Submit Buttons */}
-                    <div className="flex gap-3 pt-6 border-t border-gray-200">
+                    <div className="flex gap-3 pt-6 border-t border-gray-200 sticky bottom-0 bg-white">
                       <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         type="button"
-                        onClick={() => setShowModal(false)}
+                        onClick={() => {
+                          setShowModal(false);
+                          resetForm();
+                        }}
                         disabled={isSubmitting}
                         className="flex-1 rounded-xl border-2 border-gray-200 py-3 font-saveful-semibold text-gray-700 transition-all hover:bg-gray-50"
                       >
@@ -1479,7 +1561,7 @@ export default function IngredientsPage() {
           )}
         </AnimatePresence>
       </div>
-      </div>
+    </div>
     </DashboardLayout>
   );
 }

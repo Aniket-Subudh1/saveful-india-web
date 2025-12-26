@@ -64,7 +64,6 @@ export interface CreateIngredientDto {
 class IngredientManagementService {
   private readonly API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
-  // ============= CATEGORIES =============
 
   async getAllCategories(): Promise<IngredientCategory[]> {
     const response = await apiGet(
@@ -196,14 +195,26 @@ class IngredientManagementService {
       formData.append("categoryId", dto.categoryId);
     }
 
-    formData.append("isVeg", String(dto.isVeg !== undefined ? dto.isVeg : false));
-    formData.append("isVegan", String(dto.isVegan !== undefined ? dto.isVegan : false));
-    formData.append("isDairy", String(dto.isDairy !== undefined ? dto.isDairy : false));
-    formData.append("isNut", String(dto.isNut !== undefined ? dto.isNut : false));
-    formData.append("isGluten", String(dto.isGluten !== undefined ? dto.isGluten : false));
+    // FIXED: Only append boolean fields if they are explicitly true
+    // If false or undefined, don't send them (backend defaults to false)
+    if (dto.isVeg === true) {
+      formData.append("isVeg", "true");
+    }
+    if (dto.isVegan === true) {
+      formData.append("isVegan", "true");
+    }
+    if (dto.isDairy === true) {
+      formData.append("isDairy", "true");
+    }
+    if (dto.isNut === true) {
+      formData.append("isNut", "true");
+    }
+    if (dto.isGluten === true) {
+      formData.append("isGluten", "true");
+    }
 
-    if (dto.hasPage !== undefined) {
-      formData.append("hasPage", String(dto.hasPage));
+    if (dto.hasPage === true) {
+      formData.append("hasPage", "true");
     }
 
     if (dto.tags && dto.tags.length > 0) {
@@ -218,11 +229,11 @@ class IngredientManagementService {
       formData.append("inSeasonMonths", JSON.stringify(dto.inSeasonMonths));
     }
 
-    if (dto.isPantryItem !== undefined) {
-      formData.append("isPantryItem", String(dto.isPantryItem));
+    if (dto.isPantryItem === true) {
+      formData.append("isPantryItem", "true");
     }
 
-    if (dto.averageWeight !== undefined) {
+    if (dto.averageWeight !== undefined && dto.averageWeight !== null) {
       formData.append("averageWeight", String(dto.averageWeight));
     }
 
@@ -290,28 +301,41 @@ class IngredientManagementService {
       formData.append("categoryId", dto.categoryId);
     }
 
-    if (dto.isVeg !== undefined) {
-      formData.append("isVeg", String(dto.isVeg));
+    // FIXED: Only send boolean values if explicitly true
+    if (dto.isVeg === true) {
+      formData.append("isVeg", "true");
+    } else if (dto.isVeg === false) {
+      formData.append("isVeg", "false");
     }
 
-    if (dto.isVegan !== undefined) {
-      formData.append("isVegan", String(dto.isVegan));
+    if (dto.isVegan === true) {
+      formData.append("isVegan", "true");
+    } else if (dto.isVegan === false) {
+      formData.append("isVegan", "false");
     }
 
-    if (dto.isDairy !== undefined) {
-      formData.append("isDairy", String(dto.isDairy));
+    if (dto.isDairy === true) {
+      formData.append("isDairy", "true");
+    } else if (dto.isDairy === false) {
+      formData.append("isDairy", "false");
     }
 
-    if (dto.isNut !== undefined) {
-      formData.append("isNut", String(dto.isNut));
+    if (dto.isNut === true) {
+      formData.append("isNut", "true");
+    } else if (dto.isNut === false) {
+      formData.append("isNut", "false");
     }
 
-    if (dto.isGluten !== undefined) {
-      formData.append("isGluten", String(dto.isGluten));
+    if (dto.isGluten === true) {
+      formData.append("isGluten", "true");
+    } else if (dto.isGluten === false) {
+      formData.append("isGluten", "false");
     }
 
-    if (dto.hasPage !== undefined) {
-      formData.append("hasPage", String(dto.hasPage));
+    if (dto.hasPage === true) {
+      formData.append("hasPage", "true");
+    } else if (dto.hasPage === false) {
+      formData.append("hasPage", "false");
     }
 
     if (dto.tags) {
@@ -326,11 +350,13 @@ class IngredientManagementService {
       formData.append("inSeasonMonths", JSON.stringify(dto.inSeasonMonths));
     }
 
-    if (dto.isPantryItem !== undefined) {
-      formData.append("isPantryItem", String(dto.isPantryItem));
+    if (dto.isPantryItem === true) {
+      formData.append("isPantryItem", "true");
+    } else if (dto.isPantryItem === false) {
+      formData.append("isPantryItem", "false");
     }
 
-    if (dto.averageWeight !== undefined) {
+    if (dto.averageWeight !== undefined && dto.averageWeight !== null) {
       formData.append("averageWeight", String(dto.averageWeight));
     }
 
