@@ -64,6 +64,7 @@ export interface CreateIngredientDto {
 class IngredientManagementService {
   private readonly API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
+  // ============= CATEGORIES =============
 
   async getAllCategories(): Promise<IngredientCategory[]> {
     const response = await apiGet(
@@ -301,41 +302,30 @@ class IngredientManagementService {
       formData.append("categoryId", dto.categoryId);
     }
 
-    // FIXED: Only send boolean values if explicitly true
-    if (dto.isVeg === true) {
-      formData.append("isVeg", "true");
-    } else if (dto.isVeg === false) {
-      formData.append("isVeg", "false");
+    // CRITICAL FIX: Always append as STRINGS, never as booleans
+    // FormData + NestJS has issues with boolean values
+    if (dto.isVeg !== undefined) {
+      formData.append("isVeg", dto.isVeg ? "true" : "false");
     }
 
-    if (dto.isVegan === true) {
-      formData.append("isVegan", "true");
-    } else if (dto.isVegan === false) {
-      formData.append("isVegan", "false");
+    if (dto.isVegan !== undefined) {
+      formData.append("isVegan", dto.isVegan ? "true" : "false");
     }
 
-    if (dto.isDairy === true) {
-      formData.append("isDairy", "true");
-    } else if (dto.isDairy === false) {
-      formData.append("isDairy", "false");
+    if (dto.isDairy !== undefined) {
+      formData.append("isDairy", dto.isDairy ? "true" : "false");
     }
 
-    if (dto.isNut === true) {
-      formData.append("isNut", "true");
-    } else if (dto.isNut === false) {
-      formData.append("isNut", "false");
+    if (dto.isNut !== undefined) {
+      formData.append("isNut", dto.isNut ? "true" : "false");
     }
 
-    if (dto.isGluten === true) {
-      formData.append("isGluten", "true");
-    } else if (dto.isGluten === false) {
-      formData.append("isGluten", "false");
+    if (dto.isGluten !== undefined) {
+      formData.append("isGluten", dto.isGluten ? "true" : "false");
     }
 
-    if (dto.hasPage === true) {
-      formData.append("hasPage", "true");
-    } else if (dto.hasPage === false) {
-      formData.append("hasPage", "false");
+    if (dto.hasPage !== undefined) {
+      formData.append("hasPage", dto.hasPage ? "true" : "false");
     }
 
     if (dto.tags) {
@@ -350,10 +340,8 @@ class IngredientManagementService {
       formData.append("inSeasonMonths", JSON.stringify(dto.inSeasonMonths));
     }
 
-    if (dto.isPantryItem === true) {
-      formData.append("isPantryItem", "true");
-    } else if (dto.isPantryItem === false) {
-      formData.append("isPantryItem", "false");
+    if (dto.isPantryItem !== undefined) {
+      formData.append("isPantryItem", dto.isPantryItem ? "true" : "false");
     }
 
     if (dto.averageWeight !== undefined && dto.averageWeight !== null) {
@@ -367,7 +355,7 @@ class IngredientManagementService {
     // Debug FormData contents
     console.log("Update FormData contents:");
     for (let [key, value] of formData.entries()) {
-      console.log(`${key}: ${value}`);
+      console.log(`${key}: ${value} (type: ${typeof value})`);
     }
 
     const token = authService.getStoredToken("admin");
