@@ -32,6 +32,8 @@ export default function ChefsPage() {
   const [chefs, setChefs] = useState<Chef[]>([]);
   const [loadingChefs, setLoadingChefs] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [chefToDelete, setChefToDelete] = useState<Chef | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -41,6 +43,7 @@ export default function ChefsPage() {
   const [formError, setFormError] = useState("");
   const [formSuccess, setFormSuccess] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -85,14 +88,23 @@ export default function ChefsPage() {
   };
 
   const handleDeleteChef = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this chef?")) return;
+    setIsDeleting(true);
 
     try {
       await chefManagementService.deleteChef(id);
       loadChefs();
+      setShowDeleteModal(false);
+      setChefToDelete(null);
     } catch (error: any) {
       alert(error.response?.data?.message || "Failed to delete chef");
+    } finally {
+      setIsDeleting(false);
     }
+  };
+
+  const openDeleteModal = (chef: Chef) => {
+    setChefToDelete(chef);
+    setShowDeleteModal(true);
   };
 
   const handleLogout = async () => {
@@ -511,7 +523,7 @@ export default function ChefsPage() {
                             <motion.button
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
-                              onClick={() => handleDeleteChef(chef.id)}
+                              onClick={() => openDeleteModal(chef)}
                               className="rounded-lg bg-gradient-to-r from-red-500 to-red-600 px-4 py-2 font-saveful-semibold text-sm text-white shadow-md transition-all hover:shadow-lg"
                             >
                               Remove
@@ -527,6 +539,93 @@ export default function ChefsPage() {
           </motion.div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && chefToDelete && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => !isDeleting && setShowDeleteModal(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl"
+          >
+            <div className="mb-6 flex items-center gap-4">
+              <div className="rounded-full bg-red-100 p-3">
+                <svg className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-saveful-bold text-2xl text-saveful-black">
+                  Remove Chef
+                </h3>
+                <p className="font-saveful text-sm text-gray-500">
+                  This action cannot be undone
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-6 rounded-xl bg-gray-50 p-4">
+              <p className="mb-2 font-saveful text-saveful-gray">
+                Are you sure you want to remove:
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-saveful-purple to-saveful-pink shadow-md">
+                  <span className="font-saveful-bold text-lg text-white">
+                    {chefToDelete.name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div>
+                  <p className="font-saveful-semibold text-saveful-black">
+                    {chefToDelete.name}
+                  </p>
+                  <p className="font-saveful text-sm text-gray-500">
+                    {chefToDelete.email}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
+                className="flex-1 rounded-xl border-2 border-gray-200 bg-white px-6 py-3 font-saveful-semibold text-gray-700 transition-all hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => handleDeleteChef(chefToDelete.id)}
+                disabled={isDeleting}
+                className="flex-1 rounded-xl bg-gradient-to-r from-red-500 to-red-600 px-6 py-3 font-saveful-semibold text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Removing...
+                  </span>
+                ) : (
+                  "Yes, Remove Chef"
+                )}
+              </motion.button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </DashboardLayout>
   );
 }
