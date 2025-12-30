@@ -16,8 +16,8 @@ class ChefManagementService {
   async createChef(chefData: ChefCreateDto): Promise<{ success: boolean; message: string; chef: Chef }> {
     const response = await apiPost(
       `${this.API_BASE_URL}/api/auth/chef/create`,
-      "admin",
-      chefData
+      chefData,
+      "admin"
     );
 
     if (!response.ok) {
