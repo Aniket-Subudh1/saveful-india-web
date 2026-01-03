@@ -12,7 +12,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faUserTie,
   faEnvelope,
-  faPhone,
   faLock,
   faUserPlus,
 } from "@fortawesome/free-solid-svg-icons";
@@ -21,7 +20,6 @@ interface Chef {
   id: string;
   name: string;
   email: string;
-  phoneNumber?: string;
   createdAt: string;
 }
 
@@ -38,7 +36,6 @@ export default function ChefsPage() {
     name: "",
     email: "",
     password: "",
-    phoneNumber: "",
   });
   const [formError, setFormError] = useState("");
   const [formSuccess, setFormSuccess] = useState("");
@@ -72,7 +69,7 @@ export default function ChefsPage() {
     try {
       await chefManagementService.createChef(formData);
       setFormSuccess("Chef created successfully!");
-      setFormData({ name: "", email: "", password: "", phoneNumber: "" });
+      setFormData({ name: "", email: "", password: "" });
       loadChefs();
       
       // Close modal after 1.5 seconds to show success message
@@ -352,28 +349,6 @@ export default function ChefsPage() {
                         minLength={6}
                       />
                     </motion.div>
-                    <motion.div
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.4 }}
-                    >
-                      <label className="mb-2 flex items-center gap-2 font-saveful-semibold text-sm text-saveful-green">
-                        <FontAwesomeIcon icon={faPhone} className="h-4 w-4" />
-                        Phone Number
-                      </label>
-                      <input
-                        type="tel"
-                        value={formData.phoneNumber}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            phoneNumber: e.target.value,
-                          })
-                        }
-                        className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 font-saveful transition-all focus:border-saveful-purple focus:outline-none focus:ring-2 focus:ring-saveful-purple/20"
-                        placeholder="+91 9876543210"
-                      />
-                    </motion.div>
                   </div>
 
                   {formError && (
@@ -470,12 +445,6 @@ export default function ChefsPage() {
                           </div>
                         </th>
                         <th className="px-6 py-4 text-left font-saveful-bold text-sm uppercase tracking-wide text-saveful-green">
-                          <div className="flex items-center gap-2">
-                            <FontAwesomeIcon icon={faPhone} className="h-4 w-4" />
-                            Phone
-                          </div>
-                        </th>
-                        <th className="px-6 py-4 text-left font-saveful-bold text-sm uppercase tracking-wide text-saveful-green">
                           Joined
                         </th>
                         <th className="px-6 py-4 text-center font-saveful-bold text-sm uppercase tracking-wide text-saveful-green">
@@ -506,11 +475,6 @@ export default function ChefsPage() {
                           </td>
                           <td className="px-6 py-4 font-saveful text-saveful-gray">
                             {chef.email}
-                          </td>
-                          <td className="px-6 py-4 font-saveful text-saveful-gray">
-                            {chef.phoneNumber || (
-                              <span className="text-gray-400">—</span>
-                            )}
                           </td>
                           <td className="px-6 py-4 font-saveful text-sm text-saveful-gray">
                             {new Date(chef.createdAt).toLocaleDateString("en-US", {

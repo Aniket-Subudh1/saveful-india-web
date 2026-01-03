@@ -24,7 +24,6 @@ export interface AuthResponse {
     email: string;
     role: string;
     name?: string;
-    phoneNumber?: string;
   };
 }
 
@@ -32,5 +31,4 @@ export interface ChefCreateDto {
   name: string;
   email: string;
   password: string;
-  phoneNumber?: string;
 }

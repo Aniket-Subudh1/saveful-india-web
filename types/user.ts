@@ -5,17 +5,13 @@ export interface UserDietaryProfile {
   glutenFree: boolean;
   hasDiabetes: boolean;
   otherAllergies: string[];
-  updatedAt: string;
 }
 
 export interface UserOnboarding {
-  postcode: string;
-  suburb: string;
   noOfAdults: number;
   noOfChildren: number;
-  tastePreference: string[];
-  trackSurveyDay: string | null;
-  updatedAt: string;
+  country?: string;
+  stateCode?: string;
 }
 
 export interface UserSession {
@@ -30,7 +26,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  phoneNumber?: string;
+  country?: string;
   stateCode?: string;
   createdAt: string;
   updatedAt: string;

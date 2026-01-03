@@ -5,7 +5,6 @@ export interface Chef {
   id: string;
   email: string;
   name: string;
-  phoneNumber?: string;
   createdAt: string;
   updatedAt: string;
 }

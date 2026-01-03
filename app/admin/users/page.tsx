@@ -359,8 +359,8 @@ export default function UsersPage() {
                           <td className="px-6 py-4">
                             <div className="font-saveful text-sm text-saveful-gray">
                               <p>{user.email}</p>
-                              {user.phoneNumber && (
-                                <p className="text-xs text-gray-400">{user.phoneNumber}</p>
+                              {user.country && (
+                                <p className="text-xs text-gray-400">{user.country}</p>
                               )}
                             </div>
                           </td>
@@ -488,10 +488,10 @@ export default function UsersPage() {
                     <p className="font-saveful text-xs text-gray-500">Email</p>
                     <p className="font-saveful-semibold text-saveful-black">{selectedUser.email}</p>
                   </div>
-                  {selectedUser.phoneNumber && (
+                  {selectedUser.country && (
                     <div>
-                      <p className="font-saveful text-xs text-gray-500">Phone</p>
-                      <p className="font-saveful-semibold text-saveful-black">{selectedUser.phoneNumber}</p>
+                      <p className="font-saveful text-xs text-gray-500">Country</p>
+                      <p className="font-saveful-semibold text-saveful-black">{selectedUser.country}</p>
                     </div>
                   )}
                   {selectedUser.stateCode && (
@@ -607,12 +607,22 @@ export default function UsersPage() {
                 </h4>
                 {selectedUser.onboarding ? (
                   <div className="space-y-3">
-                    <div>
-                      <p className="font-saveful text-xs text-gray-500">Location</p>
-                      <p className="font-saveful-semibold text-saveful-black">
-                        {selectedUser.onboarding.suburb}, {selectedUser.onboarding.postcode}
-                      </p>
-                    </div>
+                    {selectedUser.onboarding.country && (
+                      <div>
+                        <p className="font-saveful text-xs text-gray-500">Country</p>
+                        <p className="font-saveful-semibold text-saveful-black">
+                          {selectedUser.onboarding.country}
+                        </p>
+                      </div>
+                    )}
+                    {selectedUser.onboarding.stateCode && (
+                      <div>
+                        <p className="font-saveful text-xs text-gray-500">State Code</p>
+                        <p className="font-saveful-semibold text-saveful-black">
+                          {selectedUser.onboarding.stateCode}
+                        </p>
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <p className="font-saveful text-xs text-gray-500">Adults</p>
