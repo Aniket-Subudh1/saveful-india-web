@@ -30,8 +30,11 @@ export async function apiClient(
   let response = await fetch(url, {
     ...fetchOptions,
     headers,
+    // Avoid conditional requests that may return 304 and break UI
+    cache: 'no-store',
   });
 
+  // Handle unauthorized by attempting token refresh
   if (response.status === 401 && !skipAuth) {
     const refreshed = await authService.refreshToken(role);
 
@@ -42,6 +45,7 @@ export async function apiClient(
         response = await fetch(url, {
           ...fetchOptions,
           headers,
+          cache: 'no-store',
         });
       }
     } else {
@@ -50,6 +54,15 @@ export async function apiClient(
       }
       throw new Error("Session expired. Please login again.");
     }
+  }
+
+  // Gracefully handle 304 Not Modified by refetching without cache
+  if (response.status === 304) {
+    response = await fetch(url, {
+      ...fetchOptions,
+      headers,
+      cache: 'reload',
+    });
   }
 
   return response;
