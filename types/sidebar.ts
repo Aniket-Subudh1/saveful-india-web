@@ -3,6 +3,7 @@ export interface SidebarLink {
   href: string;
   icon: React.ReactNode;
   onClick?: () => void;
+  children?: SidebarLink[];
 }
 
 export interface SidebarConfig {

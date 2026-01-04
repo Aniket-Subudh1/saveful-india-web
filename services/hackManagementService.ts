@@ -330,7 +330,8 @@ class HackManagementService {
       heroImage?: File;
       iconImage?: File;
     },
-    videoThumbnails?: Record<string, File>
+    videoThumbnails?: Record<string, File>,
+    blockImages?: Record<string, File>
   ): Promise<{ message: string; hackId: string }> {
     const formData = new FormData();
 
@@ -366,6 +367,13 @@ class HackManagementService {
     if (videoThumbnails) {
       Object.entries(videoThumbnails).forEach(([blockId, file]) => {
         formData.append(`videoThumbnail_${blockId}`, file);
+      });
+    }
+
+    // Append block images (for image and image_details blocks)
+    if (blockImages) {
+      Object.entries(blockImages).forEach(([blockId, file]) => {
+        formData.append(`blockImage_${blockId}`, file);
       });
     }
 
@@ -412,7 +420,8 @@ class HackManagementService {
       heroImage?: File;
       iconImage?: File;
     },
-    videoThumbnails?: Record<string, File>
+    videoThumbnails?: Record<string, File>,
+    blockImages?: Record<string, File>
   ): Promise<{ message: string; hack: Hack }> {
     const formData = new FormData();
 
@@ -452,6 +461,13 @@ class HackManagementService {
     if (videoThumbnails) {
       Object.entries(videoThumbnails).forEach(([blockId, file]) => {
         formData.append(`videoThumbnail_${blockId}`, file);
+      });
+    }
+
+    // Append block images (for image and image_details blocks)
+    if (blockImages) {
+      Object.entries(blockImages).forEach(([blockId, file]) => {
+        formData.append(`blockImage_${blockId}`, file);
       });
     }
 

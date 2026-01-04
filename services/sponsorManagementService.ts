@@ -1,4 +1,5 @@
 import { authService } from "@/services/authService";
+import { apiGet } from "@/lib/apiClient";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://0.0.0.0:3000";
 
@@ -87,17 +88,7 @@ export const sponsorManagementService = {
 
   async getAllSponsors(): Promise<Sponsor[]> {
     try {
-      const token = authService.getStoredToken("admin");
-      if (!token) {
-        throw new Error("No authentication token available");
-      }
-
-      const response = await fetch(`${API_BASE_URL}/api/sponsers`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiGet(`${API_BASE_URL}/api/sponsers`, "admin");
 
       if (!response.ok) {
         const errorText = await response.text();

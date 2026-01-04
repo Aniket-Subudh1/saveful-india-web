@@ -11,8 +11,11 @@ import {
   ListBlock,
   ImageBlock,
   VideoBlock,
+  HackOrTipBlock,
+  ImageDetailsBlock,
 } from "@/services/hackManagementService";
 import { sponsorManagementService, Sponsor } from "@/services/sponsorManagementService";
+import { hackOrTipManagementService, HackOrTip } from "@/services/hackOrTipManagementService";
 import { useRouter, useSearchParams } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { getAdminSidebarLinks } from "@/config/sidebar";
@@ -31,6 +34,8 @@ import {
   faArrowUp,
   faArrowDown,
   faTimes,
+  faLightbulb,
+  faFileImage,
 } from "@fortawesome/free-solid-svg-icons";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 
@@ -43,6 +48,7 @@ export default function NewHackPage() {
 
   const [categories, setCategories] = useState<HackCategory[]>([]);
   const [sponsors, setSponsors] = useState<Sponsor[]>([]);
+  const [hackOrTips, setHackOrTips] = useState<HackOrTip[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
 
@@ -74,6 +80,8 @@ export default function NewHackPage() {
 
   const [videoThumbnails, setVideoThumbnails] = useState<Record<string, File>>({});
   const [videoThumbnailPreviews, setVideoThumbnailPreviews] = useState<Record<string, string>>({});
+  const [blockImages, setBlockImages] = useState<Record<string, File>>({});
+  const [blockImagePreviews, setBlockImagePreviews] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -84,12 +92,14 @@ export default function NewHackPage() {
   const fetchData = async () => {
     try {
       setLoadingData(true);
-      const [categoriesData, sponsorsData] = await Promise.all([
+      const [categoriesData, sponsorsData, hackOrTipsData] = await Promise.all([
         hackManagementService.getAllCategories(),
         sponsorManagementService.getAllSponsors(),
+        hackOrTipManagementService.getAll(),
       ]);
       setCategories(categoriesData);
       setSponsors(sponsorsData);
+      setHackOrTips(hackOrTipsData);
     } catch (error: any) {
       console.error("Error fetching data:", error);
       alert("Failed to load data. Please refresh the page.");
@@ -140,6 +150,14 @@ export default function NewHackPage() {
         (newBlock as ListBlock).listTitle = "";
         (newBlock as ListBlock).listItems = [];
         break;
+      case ArticleBlockType.HACK_OR_TIP:
+        (newBlock as HackOrTipBlock).hackOrTipIds = [];
+        break;
+      case ArticleBlockType.IMAGE_DETAILS:
+        (newBlock as ImageDetailsBlock).blockImageUrl = "";
+        (newBlock as ImageDetailsBlock).blockTitle = "";
+        (newBlock as ImageDetailsBlock).blockDescription = "";
+        break;
     }
 
     setHackForm((prev) => ({
@@ -189,7 +207,8 @@ export default function NewHackPage() {
           thumbnailImage: hackImages.thumbnailImage || undefined,
           heroImage: hackImages.heroImage || undefined,
         },
-        videoThumbnails
+        videoThumbnails,
+        blockImages
       );
 
       alert("Hack created successfully!");
@@ -447,6 +466,24 @@ export default function NewHackPage() {
                     <FontAwesomeIcon icon={faVideo} className="mr-1" />
                     Video
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => addBlock(ArticleBlockType.HACK_OR_TIP)}
+                    className="rounded-lg bg-amber-100 px-3 py-1.5 font-saveful-semibold text-xs text-amber-700 transition hover:bg-amber-200"
+                    title="Add Hack or Tip Block"
+                  >
+                    <FontAwesomeIcon icon={faLightbulb} className="mr-1" />
+                    Hack or Tip
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => addBlock(ArticleBlockType.IMAGE_DETAILS)}
+                    className="rounded-lg bg-indigo-100 px-3 py-1.5 font-saveful-semibold text-xs text-indigo-700 transition hover:bg-indigo-200"
+                    title="Add Image Details Block"
+                  >
+                    <FontAwesomeIcon icon={faFileImage} className="mr-1" />
+                    Image Details
+                  </button>
                 </div>
               </div>
 
@@ -476,6 +513,11 @@ export default function NewHackPage() {
                       setVideoThumbnails={setVideoThumbnails}
                       videoThumbnailPreviews={videoThumbnailPreviews}
                       setVideoThumbnailPreviews={setVideoThumbnailPreviews}
+                      blockImages={blockImages}
+                      setBlockImages={setBlockImages}
+                      blockImagePreviews={blockImagePreviews}
+                      setBlockImagePreviews={setBlockImagePreviews}
+                      hackOrTips={hackOrTips}
                     />
                   ))
                 )}
@@ -520,6 +562,11 @@ function BlockEditor({
   setVideoThumbnails,
   videoThumbnailPreviews,
   setVideoThumbnailPreviews,
+  blockImages,
+  setBlockImages,
+  blockImagePreviews,
+  setBlockImagePreviews,
+  hackOrTips,
 }: any) {
   const [expanded, setExpanded] = useState(true);
 
@@ -533,6 +580,10 @@ function BlockEditor({
         return faVideo;
       case ArticleBlockType.LIST:
         return faList;
+      case ArticleBlockType.HACK_OR_TIP:
+        return faLightbulb;
+      case ArticleBlockType.IMAGE_DETAILS:
+        return faFileImage;
       default:
         return faFileAlt;
     }
@@ -603,13 +654,79 @@ function BlockEditor({
           )}
 
           {block.type === ArticleBlockType.IMAGE && (
-            <input
-              type="url"
-              value={(block as ImageBlock).imageUrl}
-              onChange={(e) => updateBlock(index, { imageUrl: e.target.value })}
-              placeholder="Image URL"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 font-saveful text-sm focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
-            />
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block font-saveful-semibold text-xs text-gray-700">
+                  Upload Image
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setBlockImages((prev: Record<string, File>) => ({
+                        ...prev,
+                        [block.id]: file,
+                      }));
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        setBlockImagePreviews(
+                          (prev: Record<string, string>) => ({
+                            ...prev,
+                            [block.id]: reader.result as string,
+                          })
+                        );
+                      };
+                      reader.readAsDataURL(file);
+                      // Clear URL if file is uploaded
+                      updateBlock(index, { imageUrl: "" });
+                    }
+                  }}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm file:mr-4 file:rounded-md file:border-0 file:bg-saveful-green file:px-4 file:py-1 file:text-sm file:text-white hover:file:bg-green-600"
+                />
+                {blockImagePreviews[block.id] && (
+                  <div className="relative mt-2 h-40 w-full overflow-hidden rounded-lg">
+                    <Image
+                      src={blockImagePreviews[block.id]}
+                      alt="Image Preview"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="text-center text-xs text-gray-500">OR</div>
+              <input
+                type="url"
+                value={(block as ImageBlock).imageUrl || ""}
+                onChange={(e) => {
+                  updateBlock(index, { imageUrl: e.target.value });
+                  // Clear file if URL is provided
+                  if (e.target.value) {
+                    setBlockImages((prev: Record<string, File>) => {
+                      const updated = { ...prev };
+                      delete updated[block.id];
+                      return updated;
+                    });
+                    setBlockImagePreviews((prev: Record<string, string>) => {
+                      const updated = { ...prev };
+                      delete updated[block.id];
+                      return updated;
+                    });
+                  }
+                }}
+                placeholder="Or enter image URL"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 font-saveful text-sm focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
+              />
+              <input
+                type="text"
+                value={(block as ImageBlock).caption || ""}
+                onChange={(e) => updateBlock(index, { caption: e.target.value })}
+                placeholder="Image Caption (optional)"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 font-saveful text-sm focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
+              />
+            </div>
           )}
 
           {block.type === ArticleBlockType.VIDEO && (
@@ -688,6 +805,27 @@ function BlockEditor({
               updateBlock={updateBlock}
             />
           )}
+
+          {block.type === ArticleBlockType.HACK_OR_TIP && (
+            <HackOrTipBlockEditor
+              block={block as HackOrTipBlock}
+              index={index}
+              updateBlock={updateBlock}
+              hackOrTips={hackOrTips}
+            />
+          )}
+
+          {block.type === ArticleBlockType.IMAGE_DETAILS && (
+            <ImageDetailsBlockEditor
+              block={block as ImageDetailsBlock}
+              index={index}
+              updateBlock={updateBlock}
+              blockImages={blockImages}
+              setBlockImages={setBlockImages}
+              blockImagePreviews={blockImagePreviews}
+              setBlockImagePreviews={setBlockImagePreviews}
+            />
+          )}
         </div>
       )}
     </div>
@@ -754,6 +892,185 @@ function ListBlockEditor({ block, index, updateBlock }: any) {
         <FontAwesomeIcon icon={faPlus} className="mr-2" />
         Add List Item
       </button>
+    </div>
+  );
+}
+
+function HackOrTipBlockEditor({ block, index, updateBlock, hackOrTips }: any) {
+  const [selectedHackOrTipId, setSelectedHackOrTipId] = useState<string>("");
+
+  const addHackOrTip = () => {
+    if (!selectedHackOrTipId) return;
+    
+    const newIds = [...block.hackOrTipIds, selectedHackOrTipId];
+    updateBlock(index, { hackOrTipIds: newIds });
+    setSelectedHackOrTipId("");
+  };
+
+  const removeHackOrTip = (idToRemove: string) => {
+    updateBlock(index, {
+      hackOrTipIds: block.hackOrTipIds.filter((id: string) => id !== idToRemove),
+    });
+  };
+
+  const getHackOrTipName = (id: string) => {
+    const item = hackOrTips?.find((h: HackOrTip) => h._id === id);
+    return item ? `${item.title} (${item.type})` : "Unknown";
+  };
+
+  const availableHackOrTips = hackOrTips?.filter(
+    (h: HackOrTip) => !block.hackOrTipIds.includes(h._id)
+  ) || [];
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2">
+        <select
+          value={selectedHackOrTipId}
+          onChange={(e) => setSelectedHackOrTipId(e.target.value)}
+          className="flex-1 rounded-lg border border-gray-300 px-3 py-2 font-saveful text-sm focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
+        >
+          <option value="">Select a Hack or Tip...</option>
+          {availableHackOrTips.map((item: HackOrTip) => (
+            <option key={item._id} value={item._id}>
+              {item.title} ({item.type})
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={addHackOrTip}
+          disabled={!selectedHackOrTipId}
+          className="rounded-lg bg-saveful-green px-4 py-2 font-saveful-semibold text-xs text-white transition hover:bg-green-600 disabled:bg-gray-300"
+        >
+          <FontAwesomeIcon icon={faPlus} className="mr-1" />
+          Add
+        </button>
+      </div>
+
+      {block.hackOrTipIds.length === 0 ? (
+        <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-6 text-center">
+          <FontAwesomeIcon
+            icon={faLightbulb}
+            className="mx-auto mb-2 h-8 w-8 text-gray-400"
+          />
+          <p className="font-saveful text-xs text-gray-500">
+            No Hack or Tips added yet. Select from the dropdown above.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {block.hackOrTipIds.map((id: string, idx: number) => (
+            <div
+              key={id}
+              className="flex items-center justify-between rounded-lg border border-gray-300 bg-white p-3"
+            >
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 font-saveful-semibold text-xs text-amber-700">
+                  {idx + 1}
+                </span>
+                <span className="font-saveful text-sm text-gray-700">
+                  {getHackOrTipName(id)}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => removeHackOrTip(id)}
+                className="rounded px-2 py-1 text-red-500 transition hover:bg-red-50"
+              >
+                <FontAwesomeIcon icon={faTimes} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ImageDetailsBlockEditor({ block, index, updateBlock, blockImages, setBlockImages, blockImagePreviews, setBlockImagePreviews }: any) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <label className="mb-1 block font-saveful-semibold text-xs text-gray-700">
+          Block Image <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              setBlockImages((prev: Record<string, File>) => ({
+                ...prev,
+                [block.id]: file,
+              }));
+              const reader = new FileReader();
+              reader.onloadend = () => {
+                setBlockImagePreviews(
+                  (prev: Record<string, string>) => ({
+                    ...prev,
+                    [block.id]: reader.result as string,
+                  })
+                );
+              };
+              reader.readAsDataURL(file);
+              // Clear URL if file is uploaded
+              updateBlock(index, { blockImageUrl: "" });
+            }
+          }}
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm file:mr-4 file:rounded-md file:border-0 file:bg-saveful-green file:px-4 file:py-1 file:text-sm file:text-white hover:file:bg-green-600"
+        />
+        {blockImagePreviews[block.id] && (
+          <div className="relative mt-2 h-40 w-full overflow-hidden rounded-lg">
+            <Image
+              src={blockImagePreviews[block.id]}
+              alt="Block Image Preview"
+              fill
+              className="object-cover"
+            />
+          </div>
+        )}
+      </div>
+      <div className="text-center text-xs text-gray-500">OR</div>
+      <input
+        type="url"
+        value={(block as ImageDetailsBlock).blockImageUrl || ""}
+        onChange={(e) => {
+          updateBlock(index, { blockImageUrl: e.target.value });
+          // Clear file if URL is provided
+          if (e.target.value) {
+            setBlockImages((prev: Record<string, File>) => {
+              const updated = { ...prev };
+              delete updated[block.id];
+              return updated;
+            });
+            setBlockImagePreviews((prev: Record<string, string>) => {
+              const updated = { ...prev };
+              delete updated[block.id];
+              return updated;
+            });
+          }
+        }}
+        placeholder="Or enter image URL"
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 font-saveful text-sm focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
+      />
+      <input
+        type="text"
+        value={(block as ImageDetailsBlock).blockTitle || ""}
+        onChange={(e) => updateBlock(index, { blockTitle: e.target.value })}
+        placeholder="Block Title *"
+        required
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 font-saveful-semibold text-sm focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
+      />
+      <textarea
+        value={(block as ImageDetailsBlock).blockDescription || ""}
+        onChange={(e) => updateBlock(index, { blockDescription: e.target.value })}
+        placeholder="Block Description *"
+        required
+        rows={4}
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 font-saveful text-sm focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
+      />
     </div>
   );
 }
