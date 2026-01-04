@@ -26,6 +26,8 @@ export default function SponsorsPage() {
 
   const [sponsors, setSponsors] = useState<Sponsor[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingSponsor, setEditingSponsor] = useState<Sponsor | null>(null);
   const [sponsorForm, setSponsorForm] = useState({
     title: "",
     broughtToYouBy: "",
@@ -71,6 +73,87 @@ export default function SponsorsPage() {
         }));
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const openEdit = (sponsor: Sponsor) => {
+    setEditingSponsor(sponsor);
+    setSponsorForm({
+      title: sponsor.title || "",
+      broughtToYouBy: sponsor.broughtToYouBy || "",
+      tagline: sponsor.tagline || "",
+    });
+    setSponsorImages({ logo: null, logoBlackAndWhite: null });
+    setImagePreviews({ logo: null, logoBlackAndWhite: null });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateSponsor = async () => {
+    if (!editingSponsor) return;
+    try {
+      if (!sponsorForm.title) {
+        alert("Please fill in the title field");
+        return;
+      }
+
+      setIsSubmitting(true);
+
+      const updateDto: any = {
+        title: sponsorForm.title,
+        broughtToYouBy: sponsorForm.broughtToYouBy || undefined,
+        tagline: sponsorForm.tagline || undefined,
+      };
+      if (sponsorImages.logo) updateDto.logo = sponsorImages.logo;
+      if (sponsorImages.logoBlackAndWhite)
+        updateDto.logoBlackAndWhite = sponsorImages.logoBlackAndWhite;
+
+      await sponsorManagementService.updateSponsor(editingSponsor._id, updateDto);
+
+      setShowEditModal(false);
+      setEditingSponsor(null);
+      setSponsorImages({ logo: null, logoBlackAndWhite: null });
+      setImagePreviews({ logo: null, logoBlackAndWhite: null });
+      await fetchSponsors();
+      alert("Sponsor updated successfully!");
+    } catch (error: any) {
+      console.error("Failed to update sponsor:", error);
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        (error?.response?.status === 401
+          ? "Session expired. Please login again."
+          : "Failed to update sponsor.");
+      alert(errorMessage);
+      if (error?.response?.status === 401 || error?.message?.includes("token")) {
+        router.push("/admin/login");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteSponsor = async (sponsor: Sponsor) => {
+    const ok = confirm(`Delete sponsor "${sponsor.title}"? This cannot be undone.`);
+    if (!ok) return;
+    try {
+      setIsSubmitting(true);
+      await sponsorManagementService.deleteSponsor(sponsor._id);
+      await fetchSponsors();
+      alert("Sponsor deleted successfully!");
+    } catch (error: any) {
+      console.error("Failed to delete sponsor:", error);
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        (error?.response?.status === 401
+          ? "Session expired. Please login again."
+          : "Failed to delete sponsor.");
+      alert(errorMessage);
+      if (error?.response?.status === 401 || error?.message?.includes("token")) {
+        router.push("/admin/login");
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -266,6 +349,20 @@ export default function SponsorsPage() {
                         <p className="font-saveful text-sm italic text-gray-500">
                           "{sponsor.tagline}"
                         </p>
+                        <div className="mt-3 flex gap-2">
+                          <button
+                            onClick={() => openEdit(sponsor)}
+                            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-saveful-semibold text-gray-700 hover:bg-gray-50"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSponsor(sponsor)}
+                            className="rounded-md border border-red-300 bg-red-50 px-3 py-1.5 text-sm font-saveful-semibold text-red-700 hover:bg-red-100"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </motion.div>
@@ -437,6 +534,170 @@ export default function SponsorsPage() {
                 </div>
               </motion.div>
             </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Sponsor Modal */}
+      <AnimatePresence>
+        {showEditModal && editingSponsor && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+            onClick={() => !isSubmitting && setShowEditModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-8 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-6 flex items-center justify-between">
+                <h2 className="font-saveful-bold text-2xl text-gray-900">
+                  Edit Sponsor
+                </h2>
+                <button
+                  onClick={() => !isSubmitting && setShowEditModal(false)}
+                  disabled={isSubmitting}
+                  className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                >
+                  <FontAwesomeIcon icon={faTimes} className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-5">
+                {/* Title */}
+                <div>
+                  <label className="mb-2 block font-saveful-semibold text-sm text-gray-700">
+                    Title <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={sponsorForm.title}
+                    onChange={(e) =>
+                      setSponsorForm((prev) => ({
+                        ...prev,
+                        title: e.target.value,
+                      }))
+                    }
+                    placeholder="Sponsor name"
+                    className="w-full rounded-lg border-2 border-gray-200 px-4 py-2.5 font-saveful transition-colors focus:border-saveful-orange focus:outline-none focus:ring-2 focus:ring-saveful-orange/20"
+                  />
+                </div>
+
+                {/* Brought To You By */}
+                <div>
+                  <label className="mb-2 block font-saveful-semibold text-sm text-gray-700">
+                    Brought To You By
+                  </label>
+                  <input
+                    type="text"
+                    value={sponsorForm.broughtToYouBy}
+                    onChange={(e) =>
+                      setSponsorForm((prev) => ({
+                        ...prev,
+                        broughtToYouBy: e.target.value,
+                      }))
+                    }
+                    placeholder="e.g., Brought to you by..."
+                    className="w-full rounded-lg border-2 border-gray-200 px-4 py-2.5 font-saveful transition-colors focus:border-saveful-orange focus:outline-none focus:ring-2 focus:ring-saveful-orange/20"
+                  />
+                </div>
+
+                {/* Tagline */}
+                <div>
+                  <label className="mb-2 block font-saveful-semibold text-sm text-gray-700">
+                    Tagline
+                  </label>
+                  <input
+                    type="text"
+                    value={sponsorForm.tagline}
+                    onChange={(e) =>
+                      setSponsorForm((prev) => ({
+                        ...prev,
+                        tagline: e.target.value,
+                      }))
+                    }
+                    placeholder="Sponsor tagline"
+                    className="w-full rounded-lg border-2 border-gray-200 px-4 py-2.5 font-saveful transition-colors focus:border-saveful-orange focus:outline-none focus:ring-2 focus:ring-saveful-orange/20"
+                  />
+                </div>
+
+                {/* Images */}
+                <div className="grid gap-5 md:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block font-saveful-semibold text-sm text-gray-700">
+                      Logo (optional)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleImageChange(e, "logo")}
+                        className="w-full cursor-pointer rounded-lg border-2 border-dashed border-gray-300 px-4 py-3 font-saveful text-sm transition-colors file:mr-4 file:cursor-pointer file:rounded file:border-0 file:bg-saveful-orange file:px-4 file:py-1.5 file:font-saveful-semibold file:text-white hover:border-saveful-orange focus:border-saveful-orange focus:outline-none"
+                      />
+                    </div>
+                    {(imagePreviews.logo || editingSponsor.logo) && (
+                      <div className="relative mt-3 h-28 overflow-hidden rounded-lg border-2 border-gray-100 bg-white p-2">
+                        <Image
+                          src={imagePreviews.logo || editingSponsor.logo}
+                          alt="Logo Preview"
+                          fill
+                          className="object-contain"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="mb-2 block font-saveful-semibold text-sm text-gray-700">
+                      Logo (B&W) (optional)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) =>
+                          handleImageChange(e, "logoBlackAndWhite")
+                        }
+                        className="w-full cursor-pointer rounded-lg border-2 border-dashed border-gray-300 px-4 py-3 font-saveful text-sm transition-colors file:mr-4 file:cursor-pointer file:rounded file:border-0 file:bg-gray-800 file:px-4 file:py-1.5 file:font-saveful-semibold file:text-white hover:border-gray-800 focus:border-gray-800 focus:outline-none"
+                      />
+                    </div>
+                    {(imagePreviews.logoBlackAndWhite || editingSponsor.logoBlackAndWhite) && (
+                      <div className="relative mt-3 h-28 overflow-hidden rounded-lg border-2 border-gray-800 bg-gray-900 p-2">
+                        <Image
+                          src={imagePreviews.logoBlackAndWhite || editingSponsor.logoBlackAndWhite}
+                          alt="B&W Logo Preview"
+                          fill
+                          className="object-contain"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-6">
+                  <button
+                    onClick={() => !isSubmitting && setShowEditModal(false)}
+                    disabled={isSubmitting}
+                    className="flex-1 rounded-lg border-2 border-gray-300 bg-white px-4 py-2.5 font-saveful-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleUpdateSponsor}
+                    disabled={isSubmitting}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-saveful-green px-4 py-2.5 font-saveful-semibold text-white shadow-lg transition-all hover:bg-green-600 hover:shadow-xl disabled:opacity-50 disabled:shadow-none"
+                  >
+                    <FontAwesomeIcon icon={faSave} />
+                    {isSubmitting ? "Updating..." : "Update Sponsor"}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </DashboardLayout>

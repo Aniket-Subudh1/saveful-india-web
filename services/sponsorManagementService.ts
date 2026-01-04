@@ -20,6 +20,8 @@ export interface CreateSponsorDto {
   logoBlackAndWhite?: File;
 }
 
+export type UpdateSponsorDto = Partial<CreateSponsorDto>;
+
 export const sponsorManagementService = {
   async createSponsor(data: CreateSponsorDto): Promise<Sponsor> {
     try {
@@ -105,6 +107,64 @@ export const sponsorManagementService = {
       return response.json();
     } catch (error: any) {
       console.error("getAllSponsors error:", error);
+      throw error;
+    }
+  },
+
+  async updateSponsor(id: string, data: UpdateSponsorDto): Promise<Sponsor> {
+    try {
+      const formData = new FormData();
+      if (data.title !== undefined) formData.append("title", data.title);
+      if (data.broughtToYouBy !== undefined) formData.append("broughtToYouBy", data.broughtToYouBy);
+      if (data.tagline !== undefined) formData.append("tagline", data.tagline);
+      if (data.logo) formData.append("logo", data.logo);
+      if (data.logoBlackAndWhite) formData.append("logoBlackAndWhite", data.logoBlackAndWhite);
+
+      const token = authService.getStoredToken("admin");
+      if (!token) throw new Error("No authentication token available");
+
+      const response = await fetch(`${API_BASE_URL}/api/sponsers/${id}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let error;
+        try { error = JSON.parse(errorText); } catch { error = { message: errorText || "Failed to update sponsor" }; }
+        throw { response: { data: error, status: response.status } };
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error("updateSponsor error:", error);
+      throw error;
+    }
+  },
+
+  async deleteSponsor(id: string): Promise<{ success: boolean }>{
+    try {
+      const token = authService.getStoredToken("admin");
+      if (!token) throw new Error("No authentication token available");
+
+      const response = await fetch(`${API_BASE_URL}/api/sponsers/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let error;
+        try { error = JSON.parse(errorText); } catch { error = { message: errorText || "Failed to delete sponsor" }; }
+        throw { response: { data: error, status: response.status } };
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error("deleteSponsor error:", error);
       throw error;
     }
   },

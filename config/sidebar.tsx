@@ -191,6 +191,31 @@ export const getAdminSidebarLinks = (onLogout: () => void): SidebarLink[] => [
           </svg>
         ),
       },
+      {
+        label: "Food Facts",
+        href: "/admin/food-facts",
+        icon: (
+          <svg
+            className="h-4 w-4 shrink-0 text-teal-600"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 13h6m-6 4h6m-6-8h3"
+            />
+          </svg>
+        ),
+      },
     ],
   },
   {
