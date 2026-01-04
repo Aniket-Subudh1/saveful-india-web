@@ -75,8 +75,9 @@ export default function IngredientsPage() {
 
   const [categoryForm, setCategoryForm] = useState({
     name: "",
-    description: "",
+    image: undefined as File | undefined,
   });
+  const [categoryImagePreview, setCategoryImagePreview] = useState<string | null>(null);
 
   const [ingredientForm, setIngredientForm] = useState<CreateIngredientDto>({
     name: "",
@@ -110,11 +111,8 @@ export default function IngredientsPage() {
   const loadData = async () => {
     try {
       setLoadingData(true);
-      const [ingredientsData, categoriesData] = await Promise.all([
-        ingredientManagementService.getAllIngredients(),
-        ingredientManagementService.getAllCategories(),
-      ]);
-      setIngredients(ingredientsData);
+      // Only fetch categories for now - ingredients API will be added later
+      const categoriesData = await ingredientManagementService.getAllCategories();
       setCategories(categoriesData);
     } catch (error: any) {
       console.error("Failed to load data:", error);
@@ -147,7 +145,8 @@ export default function IngredientsPage() {
       } else {
         await ingredientManagementService.createCategory(categoryForm);
       }
-      setCategoryForm({ name: "", description: "" });
+      setCategoryForm({ name: "", image: undefined });
+      setCategoryImagePreview(null);
       setShowCategoryModal(false);
       await loadData();
     } catch (error: any) {
@@ -162,8 +161,9 @@ export default function IngredientsPage() {
     setEditingCategory(category);
     setCategoryForm({
       name: category.name,
-      description: category.description || "",
+      image: undefined,
     });
+    setCategoryImagePreview(null);
     setShowCategoryModal(true);
     setShowViewCategoriesModal(false);
   };
@@ -309,6 +309,18 @@ export default function IngredientsPage() {
       const reader = new FileReader();
       reader.onloadend = () => {
         setHeroImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleCategoryImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setCategoryForm({ ...categoryForm, image: file });
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCategoryImagePreview(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -700,7 +712,8 @@ export default function IngredientsPage() {
                       onClick={() => {
                         setShowCategoryModal(false);
                         setEditingCategory(null);
-                        setCategoryForm({ name: "", description: "" });
+                        setCategoryForm({ name: "", image: undefined });
+                        setCategoryImagePreview(null);
                       }}
                       disabled={isSubmitting}
                       className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
@@ -727,19 +740,36 @@ export default function IngredientsPage() {
 
                     <div>
                       <label className="mb-2 block font-saveful-semibold text-sm text-gray-700">
-                        Description
+                        Category Image
                       </label>
-                      <textarea
-                        value={categoryForm.description}
-                        onChange={(e) =>
-                          setCategoryForm({
-                            ...categoryForm,
-                            description: e.target.value,
-                          })
-                        }
-                        rows={3}
-                        className="w-full rounded-xl border-2 border-gray-200 px-4 py-2.5 font-saveful transition-all focus:border-saveful-purple focus:outline-none focus:ring-2 focus:ring-saveful-purple/20"
-                      />
+                      <div className="space-y-3">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleCategoryImageUpload}
+                          className="hidden"
+                          id="category-image-upload"
+                        />
+                        <label
+                          htmlFor="category-image-upload"
+                          className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 transition-all hover:border-saveful-purple hover:bg-saveful-purple/5"
+                        >
+                          <FontAwesomeIcon icon={faUpload} className="text-saveful-purple" />
+                          <span className="font-saveful text-sm text-gray-600">
+                            {categoryImagePreview ? "Change Image" : "Upload Image"}
+                          </span>
+                        </label>
+                        {categoryImagePreview && (
+                          <div className="relative h-32 w-full overflow-hidden rounded-xl border-2 border-gray-200">
+                            <Image
+                              src={categoryImagePreview}
+                              alt="Category preview"
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex gap-3 pt-4">
@@ -750,7 +780,8 @@ export default function IngredientsPage() {
                         onClick={() => {
                           setShowCategoryModal(false);
                           setEditingCategory(null);
-                          setCategoryForm({ name: "", description: "" });
+                          setCategoryForm({ name: "", image: undefined });
+                          setCategoryImagePreview(null);
                         }}
                         disabled={isSubmitting}
                         className="flex-1 rounded-xl border-2 border-gray-200 py-2.5 font-saveful-semibold text-gray-700 transition-all hover:bg-gray-50"
@@ -1485,7 +1516,7 @@ export default function IngredientsPage() {
                     <div className="grid gap-4 sm:grid-cols-2">
                       {categories.map((category, index) => (
                         <motion.div
-                          key={category.id}
+                          key={category.id || (category as any)._id || index}
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: index * 0.05 }}

@@ -4,7 +4,7 @@ import { authService } from "@/services/authService";
 export interface IngredientCategory {
   id: string;
   name: string;
-  description: string | null;
+  imageUrl?: string;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -38,7 +38,7 @@ export interface Ingredient {
 
 export interface CreateIngredientCategoryDto {
   name: string;
-  description: string;
+  image?: File;
 }
 
 export interface CreateIngredientDto {
@@ -68,7 +68,7 @@ class IngredientManagementService {
 
   async getAllCategories(): Promise<IngredientCategory[]> {
     const response = await apiGet(
-      `${this.API_BASE_URL}/api/ingrediants/category`,
+      `${this.API_BASE_URL}/api/ingredients/category`,
       "admin"
     );
 
@@ -85,10 +85,27 @@ class IngredientManagementService {
   async createCategory(
     dto: CreateIngredientCategoryDto
   ): Promise<IngredientCategory> {
-    const response = await apiPost(
-      `${this.API_BASE_URL}/api/ingrediants/category`,
-      dto,
-      "admin"
+    const formData = new FormData();
+    formData.append("name", dto.name);
+    
+    if (dto.image) {
+      formData.append("image", dto.image);
+    }
+
+    const token = authService.getStoredToken("admin");
+    if (!token) {
+      throw new Error("No authentication token available");
+    }
+
+    const response = await fetch(
+      `${this.API_BASE_URL}/api/ingredients/category`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      }
     );
 
     if (!response.ok) {
@@ -106,7 +123,7 @@ class IngredientManagementService {
     dto: CreateIngredientCategoryDto
   ): Promise<IngredientCategory> {
     const response = await apiPatch(
-      `${this.API_BASE_URL}/api/ingrediants/category/${id}`,
+      `${this.API_BASE_URL}/api/ingredients/category/${id}`,
       dto,
       "admin"
     );
@@ -123,7 +140,7 @@ class IngredientManagementService {
 
   async deleteCategory(id: string): Promise<{ success: boolean; message: string }> {
     const response = await apiDelete(
-      `${this.API_BASE_URL}/api/ingrediants/category/${id}`,
+      `${this.API_BASE_URL}/api/ingredients/category/${id}`,
       "admin"
     );
 
@@ -141,7 +158,7 @@ class IngredientManagementService {
 
   async getAllIngredients(): Promise<Ingredient[]> {
     const response = await apiGet(
-      `${this.API_BASE_URL}/api/ingrediants`,
+      `${this.API_BASE_URL}/api/ingredients`,
       "admin"
     );
 
@@ -158,7 +175,7 @@ class IngredientManagementService {
 
   async getIngredientById(id: string): Promise<Ingredient> {
     const response = await apiGet(
-      `${this.API_BASE_URL}/api/ingrediants/${id}`,
+      `${this.API_BASE_URL}/api/ingredients/${id}`,
       "admin"
     );
 
@@ -229,7 +246,7 @@ class IngredientManagementService {
       throw new Error("No authentication token available");
     }
 
-    const response = await fetch(`${this.API_BASE_URL}/api/ingrediants`, {
+    const response = await fetch(`${this.API_BASE_URL}/api/ingredients`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -320,7 +337,7 @@ class IngredientManagementService {
     }
 
     const response = await fetch(
-      `${this.API_BASE_URL}/api/ingrediants/${id}`,
+      `${this.API_BASE_URL}/api/ingredients/${id}`,
       {
         method: "PATCH",
         headers: {
@@ -347,7 +364,7 @@ class IngredientManagementService {
     id: string
   ): Promise<{ success: boolean; message: string }> {
     const response = await apiDelete(
-      `${this.API_BASE_URL}/api/ingrediants/${id}`,
+      `${this.API_BASE_URL}/api/ingredients/${id}`,
       "admin"
     );
 
@@ -363,7 +380,7 @@ class IngredientManagementService {
 
   async searchIngredients(query: string): Promise<Ingredient[]> {
     const response = await apiGet(
-      `${this.API_BASE_URL}/api/ingrediants?query=${encodeURIComponent(query)}`,
+      `${this.API_BASE_URL}/api/ingredients?query=${encodeURIComponent(query)}`,
       "admin"
     );
 
