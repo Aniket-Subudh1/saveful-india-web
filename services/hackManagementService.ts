@@ -31,10 +31,10 @@ export interface ImageBlock extends BaseBlock {
 
 export interface VideoBlock extends BaseBlock {
   type: ArticleBlockType.VIDEO;
-  videoUrl: string;
+  videoUrl: string; // YouTube URL
   videoCaption?: string;
   videoCredit?: string;
-  thumbnailUrl?: string;
+  videoThumbnail?: string; // S3 URL for custom thumbnail (optional)
 }
 
 export interface ListItem {
@@ -218,40 +218,108 @@ class HackManagementService {
   }
 
   async getHacksByCategory(categoryId: string): Promise<{
-    response: {
-      category: HackCategory;
-      hacks: Hack[];
-    };
+    category: HackCategory;
+    hacks: Hack[];
   }> {
-    const response = await apiGet(
-      `${this.API_BASE_URL}/api/hack/category/${categoryId}`,
-      "admin"
-    );
+    try {
+      console.log('API URL:', `${this.API_BASE_URL}/api/hack/category/${categoryId}`);
+      const response = await apiGet(
+        `${this.API_BASE_URL}/api/hack/category/${categoryId}`,
+        "admin"
+      );
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        message: "Failed to fetch hacks",
-      }));
-      throw { response: { data: error } };
+      console.log('Response status:', response.status, response.ok);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        let error;
+        try {
+          error = JSON.parse(errorText);
+        } catch {
+          error = { message: "Failed to fetch hacks" };
+        }
+        throw { response: { data: error } };
+      }
+
+      const data = await response.json();
+      console.log('Parsed data:', data);
+      return data;
+    } catch (error: any) {
+      console.error('Get hacks by category error:', error);
+      throw error;
     }
-
-    return response.json();
   }
 
   async deleteCategory(categoryId: string): Promise<{ message: string }> {
-    const response = await apiDelete(
-      `${this.API_BASE_URL}/api/hack/category/${categoryId}`,
-      "admin"
-    );
+    try {
+      const response = await apiDelete(
+        `${this.API_BASE_URL}/api/hack/category/${categoryId}`,
+        "admin"
+      );
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        message: "Failed to delete category",
-      }));
-      throw { response: { data: error } };
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({
+          message: "Failed to delete category",
+        }));
+        throw { response: { data: error } };
+      }
+
+      return response.json();
+    } catch (error: any) {
+      console.error('Delete category error:', error);
+      throw error;
     }
+  }
 
-    return response.json();
+  async updateCategory(
+    categoryId: string,
+    data: CreateHackCategoryDto,
+    heroImage?: File,
+    iconImage?: File
+  ): Promise<{ message: string; result: HackCategory }> {
+    try {
+      const formData = new FormData();
+      formData.append("name", data.name);
+      
+      if (heroImage) {
+        formData.append("heroImage", heroImage);
+      }
+      
+      if (iconImage) {
+        formData.append("iconImage", iconImage);
+      }
+
+      const token = authService.getStoredToken("admin");
+      if (!token) {
+        throw new Error("No authentication token available");
+      }
+
+      const response = await fetch(`${this.API_BASE_URL}/api/hack/category/${categoryId}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        let error;
+        try {
+          error = JSON.parse(errorText);
+        } catch {
+          error = { message: "Failed to update category" };
+        }
+        throw { response: { data: error } };
+      }
+
+      return response.json();
+    } catch (error: any) {
+      console.error('Update category error:', error);
+      throw error;
+    }
   }
 
 
@@ -261,7 +329,8 @@ class HackManagementService {
       thumbnailImage?: File;
       heroImage?: File;
       iconImage?: File;
-    }
+    },
+    videoThumbnails?: Record<string, File>
   ): Promise<{ message: string; hackId: string }> {
     const formData = new FormData();
 
@@ -291,6 +360,13 @@ class HackManagementService {
     }
     if (files?.iconImage) {
       formData.append("iconImage", files.iconImage);
+    }
+
+    // Append video thumbnails
+    if (videoThumbnails) {
+      Object.entries(videoThumbnails).forEach(([blockId, file]) => {
+        formData.append(`videoThumbnail_${blockId}`, file);
+      });
     }
 
     const response = await apiClient(
@@ -335,7 +411,8 @@ class HackManagementService {
       thumbnailImage?: File;
       heroImage?: File;
       iconImage?: File;
-    }
+    },
+    videoThumbnails?: Record<string, File>
   ): Promise<{ message: string; hack: Hack }> {
     const formData = new FormData();
 
@@ -369,6 +446,13 @@ class HackManagementService {
     }
     if (files?.iconImage) {
       formData.append("iconImage", files.iconImage);
+    }
+
+    // Append video thumbnails
+    if (videoThumbnails) {
+      Object.entries(videoThumbnails).forEach(([blockId, file]) => {
+        formData.append(`videoThumbnail_${blockId}`, file);
+      });
     }
 
     const response = await apiClient(`${this.API_BASE_URL}/api/hack/${hackId}`, {
