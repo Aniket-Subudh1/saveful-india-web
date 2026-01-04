@@ -1,252 +1,206 @@
-import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/apiClient";
-import { authService } from "@/services/authService";
+import { authService } from "./authService";
+
+export enum IngredientTheme {
+  RED = "Red",
+  PINK = "Pink",
+  PURPLE = "Purple",
+  GREEN = "Green",
+  YELLOW = "Yellow",
+  ORANGE = "Orange",
+}
+
+export enum Month {
+  JANUARY = "January",
+  FEBRUARY = "February",
+  MARCH = "March",
+  APRIL = "April",
+  MAY = "May",
+  JUNE = "June",
+  JULY = "July",
+  AUGUST = "August",
+  SEPTEMBER = "September",
+  OCTOBER = "October",
+  NOVEMBER = "November",
+  DECEMBER = "December",
+}
 
 export interface IngredientCategory {
-  id: string;
+  _id: string;
+  id?: string;
   name: string;
   imageUrl?: string;
-  sortOrder: number;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface DietCategory {
+  _id: string;
+  id?: string;
+  name: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface HackOrTip {
+  _id: string;
+  title: string;
+  type: string;
+  shortDescription: string;
+}
+
+export interface Sponsor {
+  _id: string;
+  title: string;
+  logo: string;
+  logoBlackAndWhite?: string;
+  broughtToYouBy?: string;
+  tagline?: string;
+}
+
+export interface Sticker {
+  _id: string;
+  title: string;
+  imageUrl: string;
+  description?: string;
 }
 
 export interface Ingredient {
-  id: string;
+  _id: string;
   name: string;
-  slug: string;
-  aliases: string[];
-  imageUrl: string | null;
-  description: string | null;
-  nutritionInfo: string | null;
-  categoryId: string | null;
-  category?: IngredientCategory;
-  isVeg: boolean;
-  isVegan: boolean;
-  isDairy: boolean;
-  isNut: boolean;
-  isGluten: boolean;
-  hasPage: boolean | null;
-  tags: string[];
-  theme: string | null;
-  inSeasonMonths: string[];
+  averageWeight: number;
+  categoryId: string | IngredientCategory;
+  suitableDiets: (string | DietCategory)[];
+  hasPage: boolean;
+  heroImageUrl?: string;
+  theme?: IngredientTheme;
+  parentIngredients: (string | Partial<Ingredient>)[];
+  description?: string;
+  sponsorId?: string | Sponsor;
+  relatedHacks: (string | HackOrTip)[];
+  inSeason: Month[];
+  stickerId?: string | Sticker;
   isPantryItem: boolean;
-  averageWeight: number | null;
-  isVerified: boolean;
+  nutrition?: string;
+  order?: number;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface CreateIngredientCategoryDto {
-  name: string;
-  image?: File;
 }
 
 export interface CreateIngredientDto {
   name: string;
-  aliases?: string[];
-  description?: string;
-  nutritionInfo?: string;
-  categoryId?: string;
-  isVeg?: boolean;
-  isVegan?: boolean;
-  isDairy?: boolean;
-  isNut?: boolean;
-  isGluten?: boolean;
-  tags?: string[];
+  averageWeight: number;
+  categoryId: string;
+  suitableDiets?: string[];
   hasPage?: boolean;
-  heroImage?: File;
-  theme?: string;
-  inSeasonMonths?: string[];
+  theme?: IngredientTheme;
+  parentIngredients?: string[];
+  description?: string;
+  sponsorId?: string;
+  relatedHacks?: string[];
+  inSeason?: Month[];
+  stickerId?: string;
   isPantryItem?: boolean;
+  nutrition?: string;
+  order?: number;
+}
+
+export interface UpdateIngredientDto {
+  name?: string;
   averageWeight?: number;
+  categoryId?: string;
+  suitableDiets?: string[];
+  hasPage?: boolean;
+  theme?: IngredientTheme;
+  parentIngredients?: string[];
+  description?: string;
+  sponsorId?: string;
+  relatedHacks?: string[];
+  inSeason?: Month[];
+  stickerId?: string;
+  isPantryItem?: boolean;
+  nutrition?: string;
+  order?: number;
 }
 
 class IngredientManagementService {
-  private readonly API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+  private readonly baseURL = process.env.NEXT_PUBLIC_API_URL;
 
-  // ============= CATEGORIES =============
-
+  // Category endpoints
   async getAllCategories(): Promise<IngredientCategory[]> {
-    const response = await apiGet(
-      `${this.API_BASE_URL}/api/ingredients/category`,
-      "admin"
-    );
-
+    const response = await fetch(`${this.baseURL}/api/ingredients/category`, {
+      cache: 'no-store',
+    });
+    
     if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        message: "Failed to fetch categories",
-      }));
-      throw { response: { data: error } };
+      throw new Error('Failed to fetch categories');
     }
-
+    
     return response.json();
   }
 
-  async createCategory(
-    dto: CreateIngredientCategoryDto
-  ): Promise<IngredientCategory> {
+  // Ingredient endpoints
+  async createIngredient(
+    data: CreateIngredientDto,
+    files?: { heroImage?: File }
+  ): Promise<Ingredient> {
     const formData = new FormData();
-    formData.append("name", dto.name);
+
+    // Validate and append basic fields
+    formData.append("name", data.name.trim());
     
-    if (dto.image) {
-      formData.append("image", dto.image);
+    // Ensure averageWeight is a valid positive number
+    const avgWeight = Number(data.averageWeight);
+    if (isNaN(avgWeight) || avgWeight <= 0) {
+      throw new Error("Average weight must be a positive number");
+    }
+    formData.append("averageWeight", avgWeight.toString());
+    
+    formData.append("categoryId", data.categoryId);
+    formData.append("hasPage", data.hasPage ? "true" : "false");
+
+    if (data.suitableDiets && data.suitableDiets.length > 0) {
+      formData.append("suitableDiets", JSON.stringify(data.suitableDiets));
     }
 
-    const token = authService.getStoredToken("admin");
-    if (!token) {
-      throw new Error("No authentication token available");
-    }
-
-    const response = await fetch(
-      `${this.API_BASE_URL}/api/ingredients/category`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
+    if (data.hasPage) {
+      if (files?.heroImage) {
+        formData.append("heroImage", files.heroImage);
       }
-    );
+      if (data.theme) formData.append("theme", data.theme);
+      if (data.description) formData.append("description", data.description);
+      if (data.nutrition) formData.append("nutrition", data.nutrition);
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        message: "Failed to create category",
-      }));
-      throw { response: { data: error } };
-    }
-
-    return response.json();
-  }
-
-  async updateCategory(
-    id: string,
-    dto: CreateIngredientCategoryDto
-  ): Promise<IngredientCategory> {
-    const response = await apiPatch(
-      `${this.API_BASE_URL}/api/ingredients/category/${id}`,
-      dto,
-      "admin"
-    );
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        message: "Failed to update category",
-      }));
-      throw { response: { data: error } };
-    }
-
-    return response.json();
-  }
-
-  async deleteCategory(id: string): Promise<{ success: boolean; message: string }> {
-    const response = await apiDelete(
-      `${this.API_BASE_URL}/api/ingredients/category/${id}`,
-      "admin"
-    );
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        message: "Failed to delete category",
-      }));
-      throw { response: { data: error } };
-    }
-
-    return response.json();
-  }
-
-  // ============= INGREDIENTS =============
-
-  async getAllIngredients(): Promise<Ingredient[]> {
-    const response = await apiGet(
-      `${this.API_BASE_URL}/api/ingredients`,
-      "admin"
-    );
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        message: "Failed to fetch ingredients",
-      }));
-      throw { response: { data: error } };
-    }
-
-    const data = await response.json();
-    return data.ingredients || [];
-  }
-
-  async getIngredientById(id: string): Promise<Ingredient> {
-    const response = await apiGet(
-      `${this.API_BASE_URL}/api/ingredients/${id}`,
-      "admin"
-    );
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        message: "Failed to fetch ingredient",
-      }));
-      throw { response: { data: error } };
-    }
-
-    return response.json();
-  }
-
-  async createIngredient(dto: CreateIngredientDto): Promise<Ingredient> {
-    console.log("=== CREATE INGREDIENT SERVICE ===");
-    console.log("Input DTO:", dto);
-    
-    const formData = new FormData();
-
-    // Add required fields
-    formData.append("name", dto.name);
-
-    // Add optional text fields
-    if (dto.description) formData.append("description", dto.description);
-    if (dto.nutritionInfo) formData.append("nutritionInfo", dto.nutritionInfo);
-    if (dto.categoryId) formData.append("categoryId", dto.categoryId);
-    if (dto.theme) formData.append("theme", dto.theme);
-
-    // Add arrays
-    if (dto.aliases && dto.aliases.length > 0) {
-      formData.append("aliases", JSON.stringify(dto.aliases));
-    }
-    if (dto.tags && dto.tags.length > 0) {
-      formData.append("tags", JSON.stringify(dto.tags));
-    }
-    if (dto.inSeasonMonths && dto.inSeasonMonths.length > 0) {
-      formData.append("inSeasonMonths", JSON.stringify(dto.inSeasonMonths));
-    }
-
-    // Add numbers
-    if (dto.averageWeight !== undefined && dto.averageWeight !== null) {
-      formData.append("averageWeight", String(dto.averageWeight));
-    }
-
-    // CRITICAL: Boolean fields - ONLY send if explicitly true
-    // This works with the backend's default of false
-    if (dto.isVeg === true) formData.append("isVeg", "true");
-    if (dto.isVegan === true) formData.append("isVegan", "true");
-    if (dto.isDairy === true) formData.append("isDairy", "true");
-    if (dto.isNut === true) formData.append("isNut", "true");
-    if (dto.isGluten === true) formData.append("isGluten", "true");
-    if (dto.hasPage === true) formData.append("hasPage", "true");
-    if (dto.isPantryItem === true) formData.append("isPantryItem", "true");
-
-    // Add image file
-    if (dto.heroImage) {
-      formData.append("image", dto.heroImage);
-    }
-
-    // Debug FormData
-    console.log("=== FormData Contents ===");
-    for (let [key, value] of formData.entries()) {
-      console.log(`${key}: ${value instanceof File ? `[File: ${value.name}]` : value}`);
+      if (data.parentIngredients && data.parentIngredients.length > 0) {
+        formData.append(
+          "parentIngredients",
+          JSON.stringify(data.parentIngredients)
+        );
+      }
+      if (data.sponsorId) formData.append("sponsorId", data.sponsorId);
+      if (data.relatedHacks && data.relatedHacks.length > 0) {
+        formData.append("relatedHacks", JSON.stringify(data.relatedHacks));
+      }
+      if (data.inSeason && data.inSeason.length > 0) {
+        formData.append("inSeason", JSON.stringify(data.inSeason));
+      }
+      if (data.stickerId) formData.append("stickerId", data.stickerId);
+      if (data.isPantryItem !== undefined) {
+        formData.append("isPantryItem", data.isPantryItem ? "true" : "false");
+      }
+      
+      // Only append order if it's a valid number and greater than 0
+      if (data.order !== undefined && data.order !== null) {
+        const orderNum = Number(data.order);
+        if (!isNaN(orderNum) && orderNum >= 0) {
+          formData.append("order", orderNum.toString());
+        }
+      }
     }
 
     const token = authService.getStoredToken("admin");
-    if (!token) {
-      throw new Error("No authentication token available");
-    }
+    if (!token) throw new Error("No authentication token");
 
-    const response = await fetch(`${this.API_BASE_URL}/api/ingredients`, {
+    const response = await fetch(`${this.baseURL}/api/ingredients`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -255,144 +209,145 @@ class IngredientManagementService {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        message: "Failed to create ingredient",
-      }));
-      console.error("Create ingredient error:", error);
-      throw { response: { data: error } };
-    }
-
-    const result = await response.json();
-    console.log("Created ingredient:", result);
-    return result;
-  }
-
-  async updateIngredient(
-    id: string,
-    dto: Partial<CreateIngredientDto>
-  ): Promise<Ingredient> {
-    console.log("=== UPDATE INGREDIENT SERVICE ===");
-    console.log("Ingredient ID:", id);
-    console.log("Input DTO:", dto);
-    
-    const formData = new FormData();
-
-    // Add text fields (only if provided)
-    if (dto.name) formData.append("name", dto.name);
-    if (dto.description) formData.append("description", dto.description);
-    if (dto.nutritionInfo) formData.append("nutritionInfo", dto.nutritionInfo);
-    if (dto.categoryId) formData.append("categoryId", dto.categoryId);
-    if (dto.theme) formData.append("theme", dto.theme);
-
-    // Add arrays
-    if (dto.aliases) formData.append("aliases", JSON.stringify(dto.aliases));
-    if (dto.tags) formData.append("tags", JSON.stringify(dto.tags));
-    if (dto.inSeasonMonths) {
-      formData.append("inSeasonMonths", JSON.stringify(dto.inSeasonMonths));
-    }
-
-    // Add numbers
-    if (dto.averageWeight !== undefined && dto.averageWeight !== null) {
-      formData.append("averageWeight", String(dto.averageWeight));
-    }
-
-    // CRITICAL FIX: For updates, ALWAYS send all boolean values as strings
-    // This ensures the backend receives and processes them correctly
-    if (dto.isVeg !== undefined) {
-      formData.append("isVeg", dto.isVeg ? "true" : "false");
-    }
-    if (dto.isVegan !== undefined) {
-      formData.append("isVegan", dto.isVegan ? "true" : "false");
-    }
-    if (dto.isDairy !== undefined) {
-      formData.append("isDairy", dto.isDairy ? "true" : "false");
-    }
-    if (dto.isNut !== undefined) {
-      formData.append("isNut", dto.isNut ? "true" : "false");
-    }
-    if (dto.isGluten !== undefined) {
-      formData.append("isGluten", dto.isGluten ? "true" : "false");
-    }
-    if (dto.hasPage !== undefined) {
-      formData.append("hasPage", dto.hasPage ? "true" : "false");
-    }
-    if (dto.isPantryItem !== undefined) {
-      formData.append("isPantryItem", dto.isPantryItem ? "true" : "false");
-    }
-
-    // Add image file
-    if (dto.heroImage) {
-      formData.append("image", dto.heroImage);
-    }
-
-    // Debug FormData
-    console.log("=== Update FormData Contents ===");
-    for (let [key, value] of formData.entries()) {
-      console.log(`${key}: ${value instanceof File ? `[File: ${value.name}]` : value}`);
-    }
-
-    const token = authService.getStoredToken("admin");
-    if (!token) {
-      throw new Error("No authentication token available");
-    }
-
-    const response = await fetch(
-      `${this.API_BASE_URL}/api/ingredients/${id}`,
-      {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        message: "Failed to update ingredient",
-      }));
-      console.error("Update ingredient error:", error);
-      throw { response: { data: error } };
-    }
-
-    const result = await response.json();
-    console.log("Updated ingredient:", result);
-    return result;
-  }
-
-  async deleteIngredient(
-    id: string
-  ): Promise<{ success: boolean; message: string }> {
-    const response = await apiDelete(
-      `${this.API_BASE_URL}/api/ingredients/${id}`,
-      "admin"
-    );
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        message: "Failed to delete ingredient",
-      }));
-      throw { response: { data: error } };
+      const error = await response.json().catch(() => ({ message: "Failed to create ingredient" }));
+      throw new Error(error.message || "Failed to create ingredient");
     }
 
     return response.json();
   }
 
-  async searchIngredients(query: string): Promise<Ingredient[]> {
-    const response = await apiGet(
-      `${this.API_BASE_URL}/api/ingredients?query=${encodeURIComponent(query)}`,
-      "admin"
-    );
-
+  async getAllIngredients(): Promise<Ingredient[]> {
+    const response = await fetch(`${this.baseURL}/api/ingredients`, {
+      cache: 'no-store',
+    });
+    
     if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        message: "Failed to search ingredients",
-      }));
-      throw { response: { data: error } };
+      throw new Error('Failed to fetch ingredients');
+    }
+    
+    return response.json();
+  }
+
+  async getIngredientById(id: string): Promise<Ingredient> {
+    const response = await fetch(`${this.baseURL}/api/ingredients/${id}`, {
+      cache: 'no-store',
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch ingredient');
+    }
+    
+    return response.json();
+  }
+
+  async updateIngredient(
+    id: string,
+    data: UpdateIngredientDto,
+    files?: { heroImage?: File }
+  ): Promise<Ingredient> {
+    const formData = new FormData();
+
+    if (data.name) formData.append("name", data.name.trim());
+    
+    if (data.averageWeight !== undefined) {
+      const avgWeight = Number(data.averageWeight);
+      if (isNaN(avgWeight) || avgWeight <= 0) {
+        throw new Error("Average weight must be a positive number");
+      }
+      formData.append("averageWeight", avgWeight.toString());
+    }
+    
+    if (data.categoryId) formData.append("categoryId", data.categoryId);
+    if (data.hasPage !== undefined) {
+      formData.append("hasPage", data.hasPage ? "true" : "false");
     }
 
-    const data = await response.json();
-    return data.ingredients || [];
+    if (data.suitableDiets !== undefined) {
+      formData.append("suitableDiets", JSON.stringify(data.suitableDiets));
+    }
+
+    if (files?.heroImage) {
+      formData.append("heroImage", files.heroImage);
+    }
+
+    if (data.theme !== undefined) formData.append("theme", data.theme);
+    if (data.description !== undefined) {
+      formData.append("description", data.description);
+    }
+    if (data.nutrition !== undefined) {
+      formData.append("nutrition", data.nutrition);
+    }
+
+    if (data.parentIngredients !== undefined) {
+      formData.append(
+        "parentIngredients",
+        JSON.stringify(data.parentIngredients)
+      );
+    }
+
+    if (data.sponsorId !== undefined) {
+      formData.append("sponsorId", data.sponsorId);
+    }
+
+    if (data.relatedHacks !== undefined) {
+      formData.append("relatedHacks", JSON.stringify(data.relatedHacks));
+    }
+
+    if (data.inSeason !== undefined) {
+      formData.append("inSeason", JSON.stringify(data.inSeason));
+    }
+
+    if (data.stickerId !== undefined) {
+      formData.append("stickerId", data.stickerId);
+    }
+
+    if (data.isPantryItem !== undefined) {
+      formData.append("isPantryItem", data.isPantryItem ? "true" : "false");
+    }
+
+    if (data.order !== undefined && data.order !== null) {
+      const orderNum = Number(data.order);
+      if (!isNaN(orderNum) && orderNum >= 0) {
+        formData.append("order", orderNum.toString());
+      }
+    }
+
+    const token = authService.getStoredToken("admin");
+    if (!token) throw new Error("No authentication token");
+
+    const response = await fetch(`${this.baseURL}/api/ingredients/${id}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: "Failed to update ingredient" }));
+      throw new Error(error.message || "Failed to update ingredient");
+    }
+
+    return response.json();
+  }
+
+  async deleteIngredient(id: string): Promise<{ message: string }> {
+    const token = authService.getStoredToken("admin");
+    if (!token) throw new Error("No authentication token");
+
+    const response = await fetch(`${this.baseURL}/api/ingredients/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: "Failed to delete ingredient" }));
+      throw new Error(error.message || "Failed to delete ingredient");
+    }
+
+    return response.json();
   }
 }
 

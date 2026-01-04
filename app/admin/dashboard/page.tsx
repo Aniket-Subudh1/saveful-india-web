@@ -7,6 +7,7 @@ import { getAdminSidebarLinks } from "@/config/sidebar";
 import { motion } from "motion/react";
 import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
 import {
   faUsers,
   faUserTie,
@@ -16,6 +17,7 @@ import {
   faClock,
   faStar,
 } from "@fortawesome/free-solid-svg-icons";
+
 
 export default function AdminDashboard() {
   const { isLoading } = useAuth("admin");
