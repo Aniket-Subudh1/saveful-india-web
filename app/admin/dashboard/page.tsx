@@ -7,6 +7,27 @@ import { getAdminSidebarLinks } from "@/config/sidebar";
 import { motion } from "motion/react";
 import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useState, useEffect } from "react";
+import {
+  dashboardAnalyticsService,
+  DashboardStats,
+  PlatformHealth,
+} from "@/services/dashboardAnalyticsService";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 import {
   faUsers,
@@ -16,13 +37,56 @@ import {
   faExclamationCircle,
   faClock,
   faStar,
+  faUtensils,
+  faLightbulb,
+  faHandHoldingHeart,
+  faNewspaper,
+  faImage,
+  faLeaf,
 } from "@fortawesome/free-solid-svg-icons";
 
+const COLORS = {
+  purple: "#A68FD9",
+  green: "#2D5F4F",
+  orange: "#F7931E",
+  pink: "#E91E63",
+  blue: "#2196F3",
+  teal: "#009688",
+};
 
 export default function AdminDashboard() {
   const { isLoading } = useAuth("admin");
   const user = useCurrentUser("admin");
   const router = useRouter();
+  
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+  const [platformHealth, setPlatformHealth] = useState<PlatformHealth | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isLoading && user) {
+      fetchDashboardData();
+    }
+  }, [isLoading, user]);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [stats, health] = await Promise.all([
+        dashboardAnalyticsService.getDashboardStats(),
+        dashboardAnalyticsService.getPlatformHealth(),
+      ]);
+      setDashboardStats(stats);
+      setPlatformHealth(health);
+    } catch (err: any) {
+      console.error("Failed to fetch dashboard data:", err);
+      setError(err?.response?.data?.message || "Failed to load dashboard data");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = async () => {
     await authService.logout("admin");
@@ -44,6 +108,54 @@ export default function AdminDashboard() {
     );
   }
 
+  if (loading) {
+    return (
+      <DashboardLayout config={sidebarConfig}>
+        <div className="flex min-h-screen items-center justify-center bg-gray-50">
+          <div className="text-center">
+            <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-saveful-green border-t-transparent mx-auto"></div>
+            <div className="text-lg font-saveful text-saveful-green">Loading Dashboard...</div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout config={sidebarConfig}>
+        <div className="flex min-h-screen items-center justify-center bg-gray-50">
+          <div className="text-center">
+            <FontAwesomeIcon icon={faExclamationCircle} className="h-16 w-16 text-red-500 mb-4" />
+            <div className="text-lg font-saveful text-red-600">{error}</div>
+            <button
+              onClick={fetchDashboardData}
+              className="mt-4 rounded-lg bg-saveful-green px-6 py-2 text-white font-saveful hover:bg-saveful-green/80"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!dashboardStats || !platformHealth) {
+    return null;
+  }
+
+  // Calculate growth percentages
+  const calculateGrowth = (data: { date: string; count: number }[]) => {
+    if (data.length < 2) return 0;
+    const recent = data.slice(-3).reduce((sum, d) => sum + d.count, 0);
+    const previous = data.slice(0, 3).reduce((sum, d) => sum + d.count, 0);
+    if (previous === 0) return recent > 0 ? 100 : 0;
+    return Math.round(((recent - previous) / previous) * 100);
+  };
+
+  const userGrowthPercent = calculateGrowth(dashboardStats.userGrowth);
+  const chefGrowthPercent = calculateGrowth(dashboardStats.chefGrowth);
+
   return (
     <DashboardLayout config={sidebarConfig}>
       <div className="relative h-full overflow-y-auto bg-gradient-to-br from-gray-50 via-saveful-cream/20 to-gray-50 p-4 md:p-8">
@@ -57,24 +169,6 @@ export default function AdminDashboard() {
             className="object-contain"
           />
         </div>
-        <div className="pointer-events-none absolute bottom-0 left-0 opacity-10">
-          <Image
-            src="/money.png"
-            alt="Money"
-            width={200}
-            height={200}
-            className="object-contain"
-          />
-        </div>
-        <div className="pointer-events-none absolute right-1/4 top-1/4 opacity-5">
-          <Image
-            src="/food.png"
-            alt="Food"
-            width={150}
-            height={150}
-            className="object-contain"
-          />
-        </div>
 
         <div className="relative z-10 mx-auto max-w-7xl">
           {/* Header */}
@@ -83,60 +177,104 @@ export default function AdminDashboard() {
             animate={{ opacity: 1, y: 0 }}
             className="mb-8"
           >
-            <div className="flex items-center gap-4">
-              <div className="rounded-2xl bg-gradient-to-br from-saveful-green to-saveful-green/70 p-4 shadow-xl">
-                <FontAwesomeIcon icon={faStar} className="h-10 w-10 text-white" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="rounded-2xl bg-gradient-to-br from-saveful-green to-saveful-green/70 p-4 shadow-xl">
+                  <FontAwesomeIcon icon={faStar} className="h-10 w-10 text-white" />
+                </div>
+                <div>
+                  <h1 className="mb-1 font-saveful-bold text-4xl text-saveful-green">
+                    Dashboard Overview
+                  </h1>
+                  <p className="font-saveful text-saveful-gray">
+                    Welcome back, {user?.name}! Here's what's happening today.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="mb-1 font-saveful-bold text-4xl text-saveful-green">
-                  Dashboard Overview
-                </h1>
-                <p className="font-saveful text-saveful-gray">
-                  Welcome back, {user?.name}! Here's what's happening today.
-                </p>
-              </div>
+              <button
+                onClick={fetchDashboardData}
+                className="rounded-lg bg-white px-4 py-2 text-sm font-saveful text-saveful-green shadow-md hover:shadow-lg transition-all"
+              >
+                Refresh
+              </button>
             </div>
           </motion.div>
 
           {/* Stats Grid */}
           <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
             <StatCard
-              title="Total Chefs"
-              value="24"
-              change="+12%"
-              trend="up"
-              icon={<FontAwesomeIcon icon={faUserTie} className="h-8 w-8" />}
-              color="purple"
-            />
-            <StatCard
-              title="Active Users"
-              value="1,234"
-              change="+23%"
-              trend="up"
+              title="Total Users"
+              value={dashboardStats.totalUsers.toString()}
+              change={userGrowthPercent >= 0 ? `+${userGrowthPercent}%` : `${userGrowthPercent}%`}
+              trend={userGrowthPercent >= 0 ? "up" : "down"}
               icon={<FontAwesomeIcon icon={faUsers} className="h-8 w-8" />}
               color="green"
             />
             <StatCard
-              title="Total Recipes"
-              value="342"
-              change="+8%"
+              title="Total Chefs"
+              value={dashboardStats.totalChefs.toString()}
+              change={chefGrowthPercent >= 0 ? `+${chefGrowthPercent}%` : `${chefGrowthPercent}%`}
+              trend={chefGrowthPercent >= 0 ? "up" : "down"}
+              icon={<FontAwesomeIcon icon={faUserTie} className="h-8 w-8" />}
+              color="purple"
+            />
+            <StatCard
+              title="Ingredients"
+              value={dashboardStats.totalIngredients.toString()}
+              change="Active"
               trend="up"
-              icon={<FontAwesomeIcon icon={faChartLine} className="h-8 w-8" />}
+              icon={<FontAwesomeIcon icon={faLeaf} className="h-8 w-8" />}
               color="orange"
             />
             <StatCard
-              title="Pending Reviews"
-              value="18"
-              change="-5%"
-              trend="down"
-              icon={<FontAwesomeIcon icon={faExclamationCircle} className="h-8 w-8" />}
+              title="Hacks & Tips"
+              value={dashboardStats.totalHacks.toString()}
+              change="Published"
+              trend="up"
+              icon={<FontAwesomeIcon icon={faLightbulb} className="h-8 w-8" />}
+              color="pink"
+            />
+          </div>
+
+          {/* Additional Stats Grid */}
+          <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              title="Sponsors"
+              value={dashboardStats.totalSponsors.toString()}
+              change="Active"
+              trend="up"
+              icon={<FontAwesomeIcon icon={faHandHoldingHeart} className="h-8 w-8" />}
+              color="purple"
+            />
+            <StatCard
+              title="Food Facts"
+              value={dashboardStats.totalFoodFacts.toString()}
+              change="Published"
+              trend="up"
+              icon={<FontAwesomeIcon icon={faNewspaper} className="h-8 w-8" />}
+              color="green"
+            />
+            <StatCard
+              title="Stickers"
+              value={dashboardStats.totalStickers.toString()}
+              change="Available"
+              trend="up"
+              icon={<FontAwesomeIcon icon={faImage} className="h-8 w-8" />}
+              color="orange"
+            />
+            <StatCard
+              title="Profile Completion"
+              value={dashboardStats.dietaryProfileCompletionRate}
+              change="Users"
+              trend="up"
+              icon={<FontAwesomeIcon icon={faChartLine} className="h-8 w-8" />}
               color="pink"
             />
           </div>
 
           {/* Performance Metrics */}
           <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {/* Gauge Chart */}
+            {/* Platform Health Gauge */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -150,55 +288,152 @@ export default function AdminDashboard() {
                   <div className="flex items-center gap-2">
                     <div className="h-2 w-2 animate-pulse rounded-full bg-green-500"></div>
                     <span className="font-saveful text-sm text-green-600">
-                      Excellent
+                      {platformHealth.score >= 80 ? "Excellent" : platformHealth.score >= 60 ? "Good" : "Needs Attention"}
                     </span>
                   </div>
                 </div>
                 <div className="flex items-center justify-center py-8">
-                  <GaugeChart value={87} max={100} />
+                  <GaugeChart value={platformHealth.score} max={100} />
                 </div>
                 <div className="grid grid-cols-3 gap-4 border-t border-gray-100 pt-4">
-                  <MetricItem label="Uptime" value="99.9%" />
-                  <MetricItem label="Response" value="120ms" />
-                  <MetricItem label="Load" value="Low" />
+                  <MetricItem label="Uptime" value={platformHealth.uptime} />
+                  <MetricItem label="Response" value={platformHealth.responseTime} />
+                  <MetricItem label="Load" value={platformHealth.serverLoad} />
+                </div>
+                <div className="mt-4 border-t border-gray-100 pt-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-saveful text-sm text-gray-600">Active Users (7 days)</span>
+                    <span className="font-saveful-semibold text-lg text-saveful-green">
+                      {platformHealth.activeUsers}
+                    </span>
+                  </div>
                 </div>
               </div>
             </motion.div>
 
-            {/* Activity Chart */}
+            {/* User Growth Chart */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
               className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-xl backdrop-blur-sm transition-all hover:shadow-2xl"
             >
-              {/* Background Pattern */}
-              <div className="pointer-events-none absolute left-0 top-0 opacity-5">
-                <Image
-                  src="/challenge-ribbon.png"
-                  alt=""
-                  width={150}
-                  height={150}
-                  className="object-contain"
-                />
-              </div>
-              
               <div className="relative">
                 <div className="mb-4 flex items-center justify-between">
                   <h3 className="font-saveful-bold text-xl text-saveful-green">
-                    Weekly Activity
+                    User Growth (7 Days)
                   </h3>
                   <FontAwesomeIcon icon={faArrowTrendUp} className="h-5 w-5 text-green-500" />
                 </div>
-                <div className="space-y-4">
-                  <ActivityBar label="Mon" value={65} color="purple" />
-                  <ActivityBar label="Tue" value={78} color="green" />
-                  <ActivityBar label="Wed" value={92} color="orange" />
-                  <ActivityBar label="Thu" value={88} color="pink" />
-                  <ActivityBar label="Fri" value={95} color="purple" />
-                  <ActivityBar label="Sat" value={72} color="green" />
-                  <ActivityBar label="Sun" value={58} color="orange" />
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={dashboardStats.userGrowth}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(value) => new Date(value).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
+                    />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
+                      labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                    />
+                    <Legend />
+                    <Line 
+                      type="monotone" 
+                      dataKey="count" 
+                      stroke={COLORS.green} 
+                      strokeWidth={3}
+                      name="New Users"
+                      dot={{ fill: COLORS.green, r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Charts Row */}
+          <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {/* Chef Growth Chart */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-xl backdrop-blur-sm transition-all hover:shadow-2xl"
+            >
+              <div className="relative">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="font-saveful-bold text-xl text-saveful-green">
+                    Chef Growth (7 Days)
+                  </h3>
+                  <FontAwesomeIcon icon={faUserTie} className="h-5 w-5 text-saveful-purple" />
                 </div>
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={dashboardStats.chefGrowth}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(value) => new Date(value).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
+                    />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
+                      labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                    />
+                    <Legend />
+                    <Bar 
+                      dataKey="count" 
+                      fill={COLORS.purple} 
+                      name="New Chefs"
+                      radius={[8, 8, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </motion.div>
+
+            {/* Content Distribution Pie Chart */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-xl backdrop-blur-sm transition-all hover:shadow-2xl"
+            >
+              <div className="relative">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="font-saveful-bold text-xl text-saveful-green">
+                    Content Distribution
+                  </h3>
+                  <FontAwesomeIcon icon={faChartLine} className="h-5 w-5 text-saveful-orange" />
+                </div>
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { name: 'Ingredients', value: dashboardStats.totalIngredients },
+                        { name: 'Hacks', value: dashboardStats.totalHacks },
+                        { name: 'Food Facts', value: dashboardStats.totalFoodFacts },
+                        { name: 'Stickers', value: dashboardStats.totalStickers },
+                      ]}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      <Cell fill={COLORS.orange} />
+                      <Cell fill={COLORS.purple} />
+                      <Cell fill={COLORS.green} />
+                      <Cell fill={COLORS.pink} />
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
             </motion.div>
           </div>
@@ -207,7 +442,7 @@ export default function AdminDashboard() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+            transition={{ delay: 0.4 }}
             className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-xl backdrop-blur-sm transition-all hover:shadow-2xl"
           >
             {/* Background Pattern */}
@@ -231,43 +466,53 @@ export default function AdminDashboard() {
                     Recent Activity
                   </h3>
                 </div>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="flex items-center gap-1 font-saveful text-sm text-saveful-purple transition-colors hover:text-saveful-pink hover:underline"
-                >
-                  View All <FontAwesomeIcon icon={faArrowTrendUp} className="h-4 w-4" />
-                </motion.button>
               </div>
-              <div className="space-y-3">
-                <ActivityItem
-                  icon={<FontAwesomeIcon icon={faUserTie} className="h-5 w-5" />}
-                  title="New chef registered"
-                  description="Chef John Doe joined the platform"
-                  time="2 hours ago"
-                  color="purple"
-                />
-                <ActivityItem
-                  icon={<FontAwesomeIcon icon={faUsers} className="h-5 w-5" />}
-                  title="User milestone reached"
-                  description="Platform reached 1,000 active users"
-                  time="5 hours ago"
-                  color="green"
-                />
-                <ActivityItem
-                  icon={<FontAwesomeIcon icon={faChartLine} className="h-5 w-5" />}
-                  title="Recipe published"
-                  description="'Butter Chicken' recipe went live"
-                  time="1 day ago"
-                  color="orange"
-                />
-                <ActivityItem
-                  icon={<FontAwesomeIcon icon={faClock} className="h-5 w-5" />}
-                  title="System update"
-                  description="Platform maintenance completed"
-                  time="2 days ago"
-                  color="pink"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Recent Users */}
+                <div>
+                  <h4 className="mb-4 font-saveful-semibold text-lg text-saveful-green">
+                    Recent Users
+                  </h4>
+                  <div className="space-y-3">
+                    {dashboardStats.recentUsers.length > 0 ? (
+                      dashboardStats.recentUsers.map((user) => (
+                        <ActivityItem
+                          key={user.id}
+                          icon={<FontAwesomeIcon icon={faUsers} className="h-5 w-5" />}
+                          title="New user registered"
+                          description={`${user.name} (${user.email})`}
+                          time={getTimeAgo(user.createdAt)}
+                          color="green"
+                        />
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500 font-saveful">No recent users</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Recent Chefs */}
+                <div>
+                  <h4 className="mb-4 font-saveful-semibold text-lg text-saveful-purple">
+                    Recent Chefs
+                  </h4>
+                  <div className="space-y-3">
+                    {dashboardStats.recentChefs.length > 0 ? (
+                      dashboardStats.recentChefs.map((chef) => (
+                        <ActivityItem
+                          key={chef.id}
+                          icon={<FontAwesomeIcon icon={faUserTie} className="h-5 w-5" />}
+                          title="New chef joined"
+                          description={`${chef.name} (${chef.email})`}
+                          time={getTimeAgo(chef.createdAt)}
+                          color="purple"
+                        />
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500 font-saveful">No recent chefs</p>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </motion.div>
@@ -275,6 +520,19 @@ export default function AdminDashboard() {
       </div>
     </DashboardLayout>
   );
+}
+
+// Helper function to format time ago
+function getTimeAgo(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (seconds < 60) return 'Just now';
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
+  if (seconds < 604800) return `${Math.floor(seconds / 86400)} days ago`;
+  return date.toLocaleDateString();
 }
 
 function StatCard({
@@ -345,6 +603,7 @@ function StatCard({
     </motion.div>
   );
 }
+
 
 function GaugeChart({ value, max }: { value: number; max: number }) {
   const percentage = (value / max) * 100;
@@ -463,13 +722,13 @@ function ActivityItem({
       className={`flex items-start gap-4 rounded-xl border p-4 transition-all hover:shadow-md ${colorClasses[color]}`}
     >
       <div className={`rounded-lg p-2 ${colorClasses[color]} shadow-sm`}>{icon}</div>
-      <div className="flex-1">
-        <h4 className="mb-1 font-saveful-semibold text-sm text-saveful-black">
+      <div className="flex-1 min-w-0">
+        <h4 className="mb-1 font-saveful-semibold text-sm text-saveful-black truncate">
           {title}
         </h4>
-        <p className="font-saveful text-sm text-gray-600">{description}</p>
+        <p className="font-saveful text-xs text-gray-600 truncate">{description}</p>
       </div>
-      <span className="font-saveful text-xs text-gray-400">{time}</span>
+      <span className="font-saveful text-xs text-gray-400 whitespace-nowrap">{time}</span>
     </motion.div>
   );
 }
