@@ -51,7 +51,6 @@ export default function NewRecipePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
 
-  // Form state
   const [recipeForm, setRecipeForm] = useState<CreateRecipeDto>({
     title: "",
     shortDescription: "",
@@ -59,7 +58,10 @@ export default function NewRecipePage() {
     portions: "",
     prepCookTime: 0,
     frameworkCategories: [],
+    hackOrTipIds: [],
+    useLeftoversIn: [],
     components: [],
+    isActive: true,
   });
 
   const [heroImage, setHeroImage] = useState<File | null>(null);
@@ -114,42 +116,137 @@ export default function NewRecipePage() {
     setIsSubmitting(true);
 
     try {
+      // Clean and validate the data before sending
       const cleanedRecipeForm: any = {
         ...recipeForm,
+        // Ensure required fields are present
+        title: recipeForm.title.trim(),
+        shortDescription: recipeForm.shortDescription.trim(),
+        longDescription: recipeForm.longDescription.trim(),
+        portions: recipeForm.portions.trim(),
+        prepCookTime: Number(recipeForm.prepCookTime),
+        
         // Clean up top-level optional ObjectId fields
-        sponsorId: recipeForm.sponsorId || undefined,
-        stickerId: recipeForm.stickerId || undefined,
-        youtubeId: recipeForm.youtubeId || undefined,
+        sponsorId: recipeForm.sponsorId?.trim() || undefined,
+        stickerId: recipeForm.stickerId?.trim() || undefined,
+        youtubeId: recipeForm.youtubeId?.trim() || undefined,
+        
         // Clean up top-level array fields
+        frameworkCategories: recipeForm.frameworkCategories.filter(id => id && id.trim()),
         hackOrTipIds: (recipeForm as any).hackOrTipIds?.filter((id: string) => id && id.trim()) || undefined,
         useLeftoversIn: (recipeForm as any).useLeftoversIn?.filter((id: string) => id && id.trim()) || undefined,
-        // Clean up components
+        
+        // Clean up storage time fields
+        fridgeKeepTime: recipeForm.fridgeKeepTime?.trim() || undefined,
+        freezeKeepTime: recipeForm.freezeKeepTime?.trim() || undefined,
+        
+        // Clean up order and isActive
+        order: recipeForm.order !== undefined ? Number(recipeForm.order) : undefined,
+        isActive: recipeForm.isActive !== undefined ? Boolean(recipeForm.isActive) : true,
+        
+        // Clean up components - this is the critical part
         components: recipeForm.components.map((wrapper) => ({
-          ...wrapper,
+          prepShortDescription: wrapper.prepShortDescription?.trim() || undefined,
+          prepLongDescription: wrapper.prepLongDescription?.trim() || undefined,
+          variantTags: (wrapper.variantTags || []).filter(tag => tag && tag.trim()),
+          stronglyRecommended: Boolean(wrapper.stronglyRecommended),
+          choiceInstructions: wrapper.choiceInstructions?.trim() || undefined,
+          buttonText: wrapper.buttonText?.trim() || undefined,
+          
           component: wrapper.component.map((comp) => ({
-            ...comp,
+            componentTitle: comp.componentTitle.trim(),
+            componentInstructions: comp.componentInstructions?.trim() || undefined,
+            includedInVariants: (comp.includedInVariants || []).filter(v => v && v.trim()),
+            
             requiredIngredients: (comp.requiredIngredients || [])
-              .filter((ing) => ing.recommendedIngredient) 
+              .filter((ing) => ing.recommendedIngredient && ing.recommendedIngredient.trim())
               .map((ing) => ({
-                ...ing,
-                alternativeIngredients: (ing.alternativeIngredients || []).filter(
-                  (alt) => alt.ingredient 
-                ),
+                recommendedIngredient: ing.recommendedIngredient.trim(),
+                quantity: ing.quantity.trim(),
+                preparation: ing.preparation.trim(),
+                alternativeIngredients: (ing.alternativeIngredients || [])
+                  .filter((alt) => alt.ingredient && alt.ingredient.trim())
+                  .map((alt) => ({
+                    ingredient: alt.ingredient.trim(),
+                    inheritQuantity: Boolean(alt.inheritQuantity),
+                    inheritPreparation: Boolean(alt.inheritPreparation),
+                    quantity: alt.quantity?.trim() || undefined,
+                    preparation: alt.preparation?.trim() || undefined,
+                  })),
               })),
-            optionalIngredients: (comp.optionalIngredients || []).filter(
-              (ing) => ing.ingredient 
-            ),
-            componentSteps: (comp.componentSteps || []).map((step) => ({
-              ...step,
-              hackOrTipIds: (step.hackOrTipIds || []).filter((id: string) => id && id.trim()),
-              relevantIngredients: (step.relevantIngredients || []).filter((id: string) => id && id.trim()),
-            })),
+            
+            optionalIngredients: (comp.optionalIngredients || [])
+              .filter((ing) => ing.ingredient && ing.ingredient.trim())
+              .map((ing) => ({
+                ingredient: ing.ingredient.trim(),
+                quantity: ing.quantity.trim(),
+                preparation: ing.preparation.trim(),
+              })),
+            
+            componentSteps: (comp.componentSteps || [])
+              .filter((step) => step.stepInstructions && step.stepInstructions.trim())
+              .map((step) => ({
+                stepInstructions: step.stepInstructions.trim(),
+                hackOrTipIds: (step.hackOrTipIds || []).filter((id: string) => id && id.trim()),
+                alwaysShow: Boolean(step.alwaysShow),
+                relevantIngredients: (step.relevantIngredients || []).filter((id: string) => id && id.trim()),
+              })),
           })),
         })),
       };
 
-      // Log the cleaned data to identify any remaining empty ObjectIds
-      console.log("Cleaned recipe form:", JSON.stringify(cleanedRecipeForm, null, 2));
+      // Log the cleaned data for debugging
+      console.log("=== Recipe Form Data (Cleaned) ===");
+      console.log("Title:", cleanedRecipeForm.title);
+      console.log("Components count:", cleanedRecipeForm.components.length);
+      
+      cleanedRecipeForm.components.forEach((wrapper: any, i: number) => {
+        console.log(`\nWrapper ${i}:`, {
+          componentCount: wrapper.component.length,
+          variantTags: wrapper.variantTags,
+          stronglyRecommended: wrapper.stronglyRecommended,
+          prepShortDescription: wrapper.prepShortDescription?.substring(0, 50),
+        });
+        
+        wrapper.component.forEach((comp: any, j: number) => {
+          console.log(`  Component ${j}:`, {
+            title: comp.componentTitle,
+            instructions: comp.componentInstructions?.substring(0, 50),
+            requiredIngredients: comp.requiredIngredients?.length || 0,
+            optionalIngredients: comp.optionalIngredients?.length || 0,
+            steps: comp.componentSteps?.length || 0,
+            includedInVariants: comp.includedInVariants,
+          });
+          
+          // Log first required ingredient if exists
+          if (comp.requiredIngredients && comp.requiredIngredients.length > 0) {
+            console.log(`    First required ingredient:`, comp.requiredIngredients[0]);
+          }
+          
+          // Log first step if exists
+          if (comp.componentSteps && comp.componentSteps.length > 0) {
+            console.log(`    First step:`, {
+              instructions: comp.componentSteps[0].stepInstructions.substring(0, 50),
+              alwaysShow: comp.componentSteps[0].alwaysShow,
+            });
+          }
+        });
+      });
+      
+      console.log("\nFull cleaned data:", JSON.stringify(cleanedRecipeForm, null, 2));
+
+      // Validate that we have at least one component with one component item
+      if (cleanedRecipeForm.components.length === 0) {
+        alert("Please add at least one component wrapper");
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (cleanedRecipeForm.components[0].component.length === 0) {
+        alert("Please add at least one component in the first wrapper");
+        setIsSubmitting(false);
+        return;
+      }
 
       await recipeManagementService.createRecipe(cleanedRecipeForm, heroImage || undefined);
       alert("Recipe created successfully!");
@@ -157,7 +254,19 @@ export default function NewRecipePage() {
       router.refresh();
     } catch (error: any) {
       console.error("Error creating recipe:", error);
-      alert(error?.response?.data?.message || "Failed to create recipe");
+      console.error("Error response:", error?.response?.data);
+      
+      // Better error messaging
+      let errorMessage = "Failed to create recipe";
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.response?.data?.errors) {
+        errorMessage = "Validation failed: " + JSON.stringify(error.response.data.errors, null, 2);
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      alert(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -448,8 +557,6 @@ export default function NewRecipePage() {
   );
 }
 
-// ===== COMPONENT CARDS =====
-
 function BasicInformationCard({
   recipeForm,
   setRecipeForm,
@@ -576,6 +683,56 @@ function BasicInformationCard({
                   className="rounded border-gray-300 text-saveful-green focus:ring-saveful-green"
                 />
                 <span className="font-saveful text-sm">{cat.title}</span>
+              </label>
+            )) : null}
+          </div>
+        </div>
+
+        {/* Top-level Hacks/Tips */}
+        <div>
+          <label className="mb-1 block font-saveful-semibold text-sm text-gray-700">Recipe Hacks/Tips</label>
+          <div className="grid gap-2 md:grid-cols-3">
+            {hackOrTips && hackOrTips.length > 0 ? hackOrTips.map((hack: any) => (
+              <label key={hack._id} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={(recipeForm.hackOrTipIds || []).includes(hack._id)}
+                  onChange={(e) => {
+                    setRecipeForm((prev: any) => ({
+                      ...prev,
+                      hackOrTipIds: e.target.checked
+                        ? [...(prev.hackOrTipIds || []), hack._id]
+                        : (prev.hackOrTipIds || []).filter((id: string) => id !== hack._id),
+                    }));
+                  }}
+                  className="rounded border-gray-300 text-saveful-green focus:ring-saveful-green"
+                />
+                <span className="font-saveful text-sm">{hack.title}</span>
+              </label>
+            )) : null}
+          </div>
+        </div>
+
+        {/* Use Leftovers In */}
+        <div>
+          <label className="mb-1 block font-saveful-semibold text-sm text-gray-700">Use Leftovers In</label>
+          <div className="grid gap-2 md:grid-cols-3">
+            {recipes && recipes.length > 0 ? recipes.map((rec: any) => (
+              <label key={rec._id} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={(recipeForm.useLeftoversIn || []).includes(rec._id)}
+                  onChange={(e) => {
+                    setRecipeForm((prev: any) => ({
+                      ...prev,
+                      useLeftoversIn: e.target.checked
+                        ? [...(prev.useLeftoversIn || []), rec._id]
+                        : (prev.useLeftoversIn || []).filter((id: string) => id !== rec._id),
+                    }));
+                  }}
+                  className="rounded border-gray-300 text-saveful-green focus:ring-saveful-green"
+                />
+                <span className="font-saveful text-sm">{rec.title}</span>
               </label>
             )) : null}
           </div>
