@@ -1,6 +1,7 @@
 "use client";
+export const dynamic = 'force-dynamic';
 import { useAuth, useCurrentUser } from "@/hooks/useAuth";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import {
   hackManagementService,
   HackCategory,
@@ -39,7 +40,16 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 
+// Wrap the content in Suspense to satisfy Next.js CSR bailout requirements
 export default function NewHackPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><div className="text-lg">Loading...</div></div>}>
+      <NewHackPageInner />
+    </Suspense>
+  );
+}
+
+function NewHackPageInner() {
   const { isLoading } = useAuth("admin");
   const user = useCurrentUser("admin");
   const router = useRouter();

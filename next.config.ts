@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    // Silence multiple lockfile warnings by explicitly setting the app root
+    root: __dirname,
+  },
   images: {
     remotePatterns: [
       {
