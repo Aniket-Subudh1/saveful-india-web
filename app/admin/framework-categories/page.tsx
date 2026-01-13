@@ -105,7 +105,7 @@ export default function FrameworkCategoriesPage() {
         <div className="relative z-10 mx-auto max-w-7xl">
           <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="font-saveful-bold text-3xl text-gray-900">Framework Categories</h1>
+              <h1 className="font-saveful-bold text-3xl text-gray-900">Flexible Recipe Categories</h1>
               <p className="mt-1 font-saveful text-sm text-gray-600">
                 Manage framework categories for recipes and content
               </p>
