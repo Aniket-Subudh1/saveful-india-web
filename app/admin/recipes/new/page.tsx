@@ -1,6 +1,7 @@
 "use client";
 import { useAuth, useCurrentUser } from "@/hooks/useAuth";
 import { useState, useEffect } from "react";
+import {Toaster,toast} from "sonner"
 import {
   recipeManagementService,
   CreateRecipeDto,
@@ -32,10 +33,110 @@ import {
   faUtensils,
   faChevronDown,
   faChevronUp,
+  faHexagonNodes,
 } from "@fortawesome/free-solid-svg-icons";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Loader2, ChefHat } from "lucide-react"
+
+// Define types outside component
+type ModalState = "idle" | "loading" | "success"
+
+interface RecipeModalProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}
 
 export default function NewRecipePage() {
+    const [recipeForm, setRecipeForm] = useState<CreateRecipeDto>({
+    title: "",
+    shortDescription: "",
+    longDescription: "",
+    portions: "",
+    prepCookTime: 0,
+    frameworkCategories: [],
+    hackOrTipIds: [],
+    useLeftoversIn: [],
+    components: [],
+    isActive: true,
+  });
+  //for modal
+const [prompt, setPrompt] = useState<string>("")
+const [state, setState] = useState<ModalState>("idle")
+const [missingSuggestions, setMissingSuggestions] = useState<string[]>([])
+const [open, setOpen] = useState<boolean>(false)
+  const onOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen)
+  }
+
+  const handleSubmitGenerate = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!prompt.trim()) return
+
+    setState("loading")
+    const session = localStorage.getItem("admin_user");
+    var sessionid="";
+    if(!session){
+      sessionid=Math.random().toString(16).substring(2);
+    }
+    sessionid=JSON.parse(session || "").id;
+    try {
+      const response = await fetch("/api/ai/agent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+  "sessionId": `${sessionid}`,
+  "messages": [
+    {
+      "role": "user",
+      "content": `create a recipe for ${prompt}`
+    }
+  ]
+}),
+      })
+
+      if (!response.ok) {
+         toast.error("Failed to generate recipe")
+        throw new Error("Failed to generate recipe")
+       
+      }
+
+      const data = await response.json()
+      setRecipeForm(data.data.recipe)
+      setMissingSuggestions(data.data.missingSuggestions)
+      setState("success");
+    } catch (error) {
+      toast.error("Error generating recipe")
+      console.error("Error generating recipe:", error)
+      setState("idle")
+    }
+  }
+
+  const handleCancel = () => {
+    onOpenChange(false)
+    resetModal()
+  }
+
+  const resetModal = () => {
+    setPrompt("")
+    setState("idle")
+    setRecipeForm({
+      title: "",
+      shortDescription: "",
+      longDescription: "",
+      portions: "",
+      prepCookTime: 0,
+      frameworkCategories: [],
+      hackOrTipIds: [],
+      useLeftoversIn: [],
+      components: [],
+      isActive: true,
+    });
+  }
+//end of modal
   const { isLoading } = useAuth("admin");
   const user = useCurrentUser("admin");
   const router = useRouter();
@@ -51,18 +152,7 @@ export default function NewRecipePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
 
-  const [recipeForm, setRecipeForm] = useState<CreateRecipeDto>({
-    title: "",
-    shortDescription: "",
-    longDescription: "",
-    portions: "",
-    prepCookTime: 0,
-    frameworkCategories: [],
-    hackOrTipIds: [],
-    useLeftoversIn: [],
-    components: [],
-    isActive: true,
-  });
+
 
   const [heroImage, setHeroImage] = useState<File | null>(null);
   const [heroImagePreview, setHeroImagePreview] = useState<string | null>(null);
@@ -125,25 +215,25 @@ export default function NewRecipePage() {
         longDescription: recipeForm.longDescription.trim(),
         portions: recipeForm.portions.trim(),
         prepCookTime: Number(recipeForm.prepCookTime),
-        
+
         // Clean up top-level optional ObjectId fields
         sponsorId: recipeForm.sponsorId?.trim() || undefined,
         stickerId: recipeForm.stickerId?.trim() || undefined,
         youtubeId: recipeForm.youtubeId?.trim() || undefined,
-        
+
         // Clean up top-level array fields
         frameworkCategories: recipeForm.frameworkCategories.filter(id => id && id.trim()),
         hackOrTipIds: (recipeForm as any).hackOrTipIds?.filter((id: string) => id && id.trim()) || undefined,
         useLeftoversIn: (recipeForm as any).useLeftoversIn?.filter((id: string) => id && id.trim()) || undefined,
-        
+
         // Clean up storage time fields
         fridgeKeepTime: recipeForm.fridgeKeepTime?.trim() || undefined,
         freezeKeepTime: recipeForm.freezeKeepTime?.trim() || undefined,
-        
+
         // Clean up order and isActive
         order: recipeForm.order !== undefined ? Number(recipeForm.order) : undefined,
         isActive: recipeForm.isActive !== undefined ? Boolean(recipeForm.isActive) : true,
-        
+
         // Clean up components - this is the critical part
         components: recipeForm.components.map((wrapper) => ({
           prepShortDescription: wrapper.prepShortDescription?.trim() || undefined,
@@ -152,12 +242,12 @@ export default function NewRecipePage() {
           stronglyRecommended: Boolean(wrapper.stronglyRecommended),
           choiceInstructions: wrapper.choiceInstructions?.trim() || undefined,
           buttonText: wrapper.buttonText?.trim() || undefined,
-          
+
           component: wrapper.component.map((comp) => ({
             componentTitle: comp.componentTitle.trim(),
             componentInstructions: comp.componentInstructions?.trim() || undefined,
             includedInVariants: (comp.includedInVariants || []).filter(v => v && v.trim()),
-            
+
             requiredIngredients: (comp.requiredIngredients || [])
               .filter((ing) => ing.recommendedIngredient && ing.recommendedIngredient.trim())
               .map((ing) => ({
@@ -174,7 +264,7 @@ export default function NewRecipePage() {
                     preparation: alt.preparation?.trim() || undefined,
                   })),
               })),
-            
+
             optionalIngredients: (comp.optionalIngredients || [])
               .filter((ing) => ing.ingredient && ing.ingredient.trim())
               .map((ing) => ({
@@ -182,7 +272,7 @@ export default function NewRecipePage() {
                 quantity: ing.quantity.trim(),
                 preparation: ing.preparation.trim(),
               })),
-            
+
             componentSteps: (comp.componentSteps || [])
               .filter((step) => step.stepInstructions && step.stepInstructions.trim())
               .map((step) => ({
@@ -199,7 +289,7 @@ export default function NewRecipePage() {
       console.log("=== Recipe Form Data (Cleaned) ===");
       console.log("Title:", cleanedRecipeForm.title);
       console.log("Components count:", cleanedRecipeForm.components.length);
-      
+
       cleanedRecipeForm.components.forEach((wrapper: any, i: number) => {
         console.log(`\nWrapper ${i}:`, {
           componentCount: wrapper.component.length,
@@ -207,7 +297,7 @@ export default function NewRecipePage() {
           stronglyRecommended: wrapper.stronglyRecommended,
           prepShortDescription: wrapper.prepShortDescription?.substring(0, 50),
         });
-        
+
         wrapper.component.forEach((comp: any, j: number) => {
           console.log(`  Component ${j}:`, {
             title: comp.componentTitle,
@@ -217,12 +307,12 @@ export default function NewRecipePage() {
             steps: comp.componentSteps?.length || 0,
             includedInVariants: comp.includedInVariants,
           });
-          
+
           // Log first required ingredient if exists
           if (comp.requiredIngredients && comp.requiredIngredients.length > 0) {
             console.log(`    First required ingredient:`, comp.requiredIngredients[0]);
           }
-          
+
           // Log first step if exists
           if (comp.componentSteps && comp.componentSteps.length > 0) {
             console.log(`    First step:`, {
@@ -232,7 +322,7 @@ export default function NewRecipePage() {
           }
         });
       });
-      
+
       console.log("\nFull cleaned data:", JSON.stringify(cleanedRecipeForm, null, 2));
 
       // Validate that we have at least one component with one component item
@@ -255,7 +345,7 @@ export default function NewRecipePage() {
     } catch (error: any) {
       console.error("Error creating recipe:", error);
       console.error("Error response:", error?.response?.data);
-      
+
       // Better error messaging
       let errorMessage = "Failed to create recipe";
       if (error?.response?.data?.message) {
@@ -265,7 +355,7 @@ export default function NewRecipePage() {
       } else if (error?.message) {
         errorMessage = error.message;
       }
-      
+
       alert(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -471,6 +561,117 @@ export default function NewRecipePage() {
 
   return (
     <DashboardLayout config={sidebarConfig}>
+      <Toaster position="top-right" richColors />
+      <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-full max-w-md rounded-lg">
+        {state === "idle" && (
+          <>
+            <DialogHeader className="text-center">
+              <div className="flex justify-center mb-4">
+                <ChefHat className="h-8 w-8 text-primary" />
+              </div>
+              <DialogTitle className="text-2xl font-semibold text-center">Ask SaveFul AI</DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground text-center">
+                Tell me what kind of recipe you&apos;d like to create
+              </p>
+
+              <form onSubmit={handleSubmitGenerate} className="space-y-4">
+                <Input
+                  placeholder="e.g., A quick pasta recipe with tomatoes..."
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  // @ts-ignore
+                  disabled={state === "loading"}
+                  className="border-border focus:ring-primary"
+                />
+
+                <div className="flex gap-3">
+                   {/* @ts-ignore */}
+                  <Button type="submit" disabled={!prompt.trim() || state === "loading"} className="flex-1">
+                    Generate
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCancel}
+                     // @ts-ignore
+                    disabled={state === "loading"}
+                    className="flex-1 bg-transparent"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </>
+        )}
+
+        {state === "loading" && (
+          <div className="flex flex-col items-center justify-center py-8 space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-center text-sm font-medium">We are generating recipes for you...</p>
+          </div>
+        )}
+
+        {state === "success" && (
+  <div className="flex flex-col items-center justify-center py-8 space-y-4">
+    <div className="rounded-full bg-green-100 dark:bg-green-900 p-3">
+      <svg
+        className="h-6 w-6 text-green-600 dark:text-green-200"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+      </svg>
+    </div>
+
+    <p className="text-center text-sm font-medium">Recipe generated!</p>
+
+    {(missingSuggestions.ingredients.length > 0 || missingSuggestions.hacksOrTips.length > 0) && (
+      <div className="w-full space-y-4">
+        {missingSuggestions.ingredients.length > 0 && (
+          <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded">
+            <h3 className="text-yellow-800 font-semibold mb-2">
+              Missing Ingredients:
+            </h3>
+            <ul className="list-disc list-inside text-yellow-700">
+              {missingSuggestions.ingredients.map((item:string, i:number) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {missingSuggestions.hacksOrTips.length > 0 && (
+          <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+            <h3 className="text-blue-800 font-semibold mb-2">
+              Suggested Hacks / Tips:
+            </h3>
+            <ul className="list-disc list-inside text-blue-700">
+              {missingSuggestions.hacksOrTips.map((tip:string, i:number) => (
+                <li key={i}>{tip}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    )}
+
+    <Button
+      className="mt-4 w-full"
+      onClick={() => onOpenChange(false)}
+    >
+      Close
+    </Button>
+  </div>
+)}
+
+      </DialogContent>
+    </Dialog>
       <div className="relative h-full overflow-y-auto bg-gradient-to-br from-gray-50 via-saveful-cream/20 to-gray-50 p-4 md:p-8">
         <div className="pointer-events-none absolute right-0 top-0 opacity-5">
           <svg className="h-96 w-96" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
@@ -508,6 +709,7 @@ export default function NewRecipePage() {
               recipes={recipes}
               heroImagePreview={heroImagePreview}
               handleImageChange={handleImageChange}
+              onOpenChange={onOpenChange}
             />
 
             {/* Components */}
@@ -567,10 +769,21 @@ function BasicInformationCard({
   recipes,
   heroImagePreview,
   handleImageChange,
+  onOpenChange,
 }: any) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-md">
-      <h2 className="mb-4 font-saveful-bold text-xl text-gray-900">Basic Information</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="mb-4 font-saveful-bold text-xl text-gray-900">Basic Information</h2>
+        <button
+          className=" rounded-lg bg-saveful-green px-4 py-2.5 font-saveful-semibold text-white shadow-md transition hover:bg-green-600 hover:shadow-lg disabled:bg-gray-300 disabled:shadow-none "
+          onClick={() => onOpenChange(true)}
+        >
+          <FontAwesomeIcon icon={faHexagonNodes} className="mr-2" />
+          Ask AI to Fill Details
+        </button>
+      </div>
+
       <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
           <div>
@@ -1542,6 +1755,7 @@ function RequiredIngredientEditor({ ingredient, wrapperIndex, componentIndex, in
           Alternative
         </button>
       </div>
+      
     </div>
   );
 }
