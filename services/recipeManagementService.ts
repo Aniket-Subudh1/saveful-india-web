@@ -121,14 +121,11 @@ export interface FrameworkCategory {
   updatedAt: string;
 }
 
-// ============= SERVICE CLASS =============
+
 
 class RecipeManagementService {
   private readonly API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
-  /**
-   * Get all recipes
-   */
   async getAllRecipes(): Promise<Recipe[]> {
     try {
       const response = await apiGet(
@@ -350,9 +347,7 @@ class RecipeManagementService {
     }
   }
 
-  /**
-   * Delete a recipe
-   */
+
   async deleteRecipe(recipeId: string): Promise<{ message: string }> {
     try {
       const response = await apiDelete(
