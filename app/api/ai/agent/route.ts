@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { OpenAI } from "openai";
-import { getIngredients,getFrameworkCategories,getHacksOrTips,getRecipes } from "@/app/functions/recipeTools";
+import { getIngredients, getFrameworkCategories, getHacksOrTips, getRecipes } from "@/app/functions/recipeTools";
 
+import extractRecipePayload from "@/app/functions/extractRecipePayload";
 const recipeMemory = new Map();
 
 // === SYSTEM PROMPT FOR RECIPE AGENT ===
@@ -32,7 +33,7 @@ You have 4 tools:
 
 1. getIngredients(query)
 2. getHacksOrTips(query)
-3. getFrameworkCategories(query)
+3. getFrameworkCategories(query) only have Lunch , Dinner , Breakfast //call accordingly
 4. getRecipes(query)
 
 "query" means a free-text search phrase such as:
@@ -68,7 +69,7 @@ FINAL OUTPUT FORMAT
 You must output:
 
 {
-  "json": { ... FULL RECIPE JSON ... },
+  "recipe": { ... FULL RECIPE JSON ... },
   "missingSuggestions": {
     "ingredients": [ ... ],
     "hacksOrTips": [ ... ]
@@ -157,7 +158,7 @@ DEFAULT FIELD RULES
 - stickerId: ""
 - sponsorId: ""
 - hackOrTipIds: [] if not found
-- frameworkCategories: []
+- frameworkCategories: [] if not found
 - useLeftoversIn: []
 - missingSuggestions.ingredients: []
 - missingSuggestions.hacksOrTips: []
@@ -166,132 +167,154 @@ DEFAULT FIELD RULES
 // =======================
 // NEXT.JS API ROUTE LOGIC
 // =======================
-
 export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const { messages, sessionId } = body;
+    try {
+        const body = await request.json();
+        const { messages, sessionId } = body;
 
-    if (!messages || !Array.isArray(messages)) {
-      return NextResponse.json({ error: "messages[] required" }, { status: 400 });
+        if (!messages || !Array.isArray(messages)) {
+            return NextResponse.json({ error: "messages[] required" }, { status: 400 });
+        }
+
+        const sessionKey = sessionId || "default";
+        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+        // we build a dynamic conversation stack for GPT
+        let history: any[] = [
+            { role: "system", content: RECIPE_SYSTEM_PROMPT },
+            ...messages
+        ];
+
+        const tools = [
+            {
+                type: "function" as const,
+                function: {
+                    name: "getIngredients",
+                    description: "lookup ingredients by natural query",
+                    parameters: {
+                        type: "object",
+                        properties: { query: { type: "string" } },
+                        required: ["query"]
+                    }
+                }
+            },
+            {
+                type: "function" as const,
+                function: {
+                    name: "getHacksOrTips",
+                    description: "lookup hacks and tips by semantic query",
+                    parameters: {
+                        type: "object",
+                        properties: { query: { type: "string" } },
+                        required: ["query"]
+                    }
+                }
+            },
+            {
+                type: "function" as const,
+                function: {
+                    name: "getFrameworkCategories",
+                    description: "lookup recipe framework categories",
+                    parameters: {
+                        type: "object",
+                        properties: { query: { type: "string" } },
+                        required: ["query"]
+                    }
+                }
+            },
+            {
+                type: "function" as const,
+                function: {
+                    name: "getRecipes",
+                    description: "lookup recipes to use leftovers in",
+                    parameters: {
+                        type: "object",
+                        properties: { query: { type: "string" } },
+                        required: ["query"]
+                    }
+                }
+            }
+        ];
+
+        let finalResponse: any = null;
+
+        // internal loop — runs until GPT completes
+        while (true) {
+            const completion = await openai.chat.completions.create({
+                model: "gpt-4o",
+                messages: history,
+                tools,
+                tool_choice: "auto"
+            });
+
+            const msg = completion.choices[0].message;
+
+            // termination case
+            if (!msg.tool_calls) {
+                history.push(msg);
+                const raw = msg.content || "";
+                const { recipe, missingSuggestions } = extractRecipePayload(raw);
+
+                finalResponse = { recipe, missingSuggestions };
+                break;
+            }
+
+            // push assistant part that issued tool calls
+            history.push({
+                role: "assistant",
+                content: null,
+                tool_calls: msg.tool_calls
+            });
+
+            // now execute ALL tool calls
+            for (const toolCall of msg.tool_calls) {
+                if (toolCall.type !== "function") continue;
+
+                const args = JSON.parse(toolCall.function.arguments);
+                const fn = toolCall.function.name;
+
+                let result: any = [];
+
+                if (fn === "getIngredients") result = await getIngredients(args.query);
+                if (fn === "getHacksOrTips") result = await getHacksOrTips(args.query);
+                if (fn === "getFrameworkCategories") result = await getFrameworkCategories(args.query);
+                if (fn === "getRecipes") result = await getRecipes(args.query);
+
+                // send response for this specific tool call
+                history.push({
+                    role: "tool",
+                    tool_call_id: toolCall.id,
+                    content: JSON.stringify(result)
+                });
+            }
+
+            // continue loop and let GPT consume tool responses
+        }
+
+
+
+        return NextResponse.json({
+            completed: true,
+            sessionId: sessionKey,
+            data: finalResponse
+        });
+
+    } catch (err: any) {
+        console.error(err);
+        return NextResponse.json({ error: err.message }, { status: 500 });
     }
-
-    const sessionKey = sessionId || "default";
-    if (!recipeMemory.has(sessionKey)) {
-      recipeMemory.set(sessionKey, { step: 0 });
-    }
-
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
-    });
-
-    const tools = [
-      {
-        type: "function" as const,
-        function: {
-          name: "getIngredients",
-          description: "lookup ingredients by natural query",
-          parameters: {
-            type: "object",
-            properties: { query: { type: "string" } },
-            required: ["query"]
-          }
-        }
-      },
-      {
-        type: "function" as const,
-        function: {
-          name: "getHacksOrTips",
-          description: "lookup hacks and tips by semantic query",
-          parameters: {
-            type: "object",
-            properties: { query: { type: "string" } },
-            required: ["query"]
-          }
-        }
-      },
-      {
-        type: "function" as const,
-        function: {
-          name: "getFrameworkCategories",
-          description: "lookup recipe framework categories",
-          parameters: {
-            type: "object",
-            properties: { query: { type: "string" } },
-            required: ["query"]
-          }
-        }
-      },
-      {
-        type: "function" as const,
-        function: {
-          name: "getRecipes",
-          description: "lookup recipes to use leftovers in",
-          parameters: {
-            type: "object",
-            properties: { query: { type: "string" } },
-            required: ["query"]
-          }
-        }
-      }
-    ];
-
-    const conversation = [
-      { role: "system", content: RECIPE_SYSTEM_PROMPT },
-      ...messages
-    ];
-
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: conversation,
-      tools,
-      tool_choice: "auto"
-    });
-
-    const msg = response.choices[0].message;
-
-    // If tool calls exist, you execute them now
-    if (msg.tool_calls) {
-      const results = [];
-
-      for (const toolCall of msg.tool_calls) {
-        if (toolCall.type !== "function") continue;
-        
-        const fn = toolCall.function.name;
-        const args = JSON.parse(toolCall.function.arguments);
-
-        let result = null;
-        if (fn === "getIngredients") result = await getIngredients(args.query);
-        if (fn === "getHacksOrTips") result = await getHacksOrTips(args.query);
-        if (fn === "getFrameworkCategories") result = await getFrameworkCategories(args.query);
-        if (fn === "getRecipes") result = await getRecipes(args.query);
-
-        results.push({ id: toolCall.id, result });
-      }
-
-      return NextResponse.json({ pending: true, toolResults: results });
-    }
-
-    return NextResponse.json({
-      success: true,
-      sessionId: sessionKey,
-      data: msg.content
-    });
-
-  } catch (err: any) {
-    console.error(err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
 }
 
+
+
 export async function DELETE(request: Request) {
-  const body = await request.json();
-  const { sessionId } = body;
+    const body = await request.json();
+    const { sessionId } = body;
 
-  if (sessionId && recipeMemory.has(sessionId)) {
-    recipeMemory.delete(sessionId);
-    return NextResponse.json({ success: true, message: "Session cleared" });
-  }
+    if (sessionId && recipeMemory.has(sessionId)) {
+        recipeMemory.delete(sessionId);
+        return NextResponse.json({ success: true, message: "Session cleared" });
+    }
 
-  return NextResponse.json({ success: false, message: "Session not found" });
+    return NextResponse.json({ success: false, message: "Session not found" });
 }
