@@ -28,13 +28,28 @@ export function RichTextEditor({
 
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== value) {
-      editorRef.current.innerHTML = value || "";
+      let htmlValue = value || "";
+      
+      // If the value is plain text without HTML tags, wrap it in a paragraph
+      if (htmlValue && !htmlValue.trim().startsWith('<')) {
+        htmlValue = `<p>${htmlValue}</p>`;
+      }
+      
+      editorRef.current.innerHTML = htmlValue;
     }
   }, [value]);
 
   const handleInput = () => {
     if (editorRef.current) {
-      onChange(editorRef.current.innerHTML);
+      let html = editorRef.current.innerHTML;
+      
+      // Ensure content is wrapped in paragraph tags if it's just plain text
+      // This handles cases where users type without using formatting buttons
+      if (html && !html.trim().startsWith('<')) {
+        html = `<p>${html}</p>`;
+      }
+      
+      onChange(html);
     }
   };
 
