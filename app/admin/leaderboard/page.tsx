@@ -372,6 +372,7 @@ export default function LeaderboardPage() {
                       <th className="px-6 py-4 text-left font-saveful-bold text-sm">Location</th>
                       <th className="px-6 py-4 text-center font-saveful-bold text-sm">Meals Cooked</th>
                       <th className="px-6 py-4 text-center font-saveful-bold text-sm">Food Saved</th>
+                      <th className="px-6 py-4 text-center font-saveful-bold text-sm">Money Saved</th>
                       <th className="px-6 py-4 text-center font-saveful-bold text-sm">Badges</th>
                       {selectedMetric === "BOTH" && (
                         <th className="px-6 py-4 text-center font-saveful-bold text-sm">Score</th>
@@ -425,6 +426,16 @@ export default function LeaderboardPage() {
                             <FontAwesomeIcon icon={faLeaf} className="h-4 w-4 text-green-600" />
                             <span className="font-saveful-bold text-green-900">
                               {entry.foodSavedInKg} kg
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Money Saved */}
+                        <td className="px-6 py-4 text-center">
+                          <div className="inline-flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1">
+                            <span className="text-blue-600">₹</span>
+                            <span className="font-saveful-bold text-blue-900">
+                              {(entry.totalMoneySaved || 0).toFixed(0)}
                             </span>
                           </div>
                         </td>

@@ -13,6 +13,7 @@ export interface LeaderboardEntry {
   numberOfMealsCooked: number;
   foodSavedInGrams: number;
   foodSavedInKg: number;
+  totalMoneySaved?: number;
   badgeCount: number;
   combinedScore?: number;
   updatedAt: string;
