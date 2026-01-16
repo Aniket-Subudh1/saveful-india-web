@@ -65,7 +65,7 @@ export default function NewRecipePage() {
   //for modal
 const [prompt, setPrompt] = useState<string>("")
 const [state, setState] = useState<ModalState>("idle")
-const [missingSuggestions, setMissingSuggestions] = useState<string[]>([])
+const [missingSuggestions, setMissingSuggestions] = useState<{ ingredients: string[], hacksOrTips: string[] }>({ ingredients: [], hacksOrTips: [] })
 const [open, setOpen] = useState<boolean>(false)
   const onOpenChange = (isOpen: boolean) => {
     setOpen(isOpen)
@@ -123,6 +123,7 @@ const [open, setOpen] = useState<boolean>(false)
   const resetModal = () => {
     setPrompt("")
     setState("idle")
+    setMissingSuggestions({ ingredients: [], hacksOrTips: [] })
     setRecipeForm({
       title: "",
       shortDescription: "",
