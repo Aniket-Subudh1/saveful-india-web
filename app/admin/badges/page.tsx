@@ -1,43 +1,48 @@
 "use client";
 import { useAuth, useCurrentUser } from "@/hooks/useAuth";
 import { useState, useEffect } from "react";
-import { badgeManagementService, Badge, BadgeStats } from "@/services/badgeManagementService";
+import { badgeManagementService, Badge, BadgeStats, BadgeCategory } from "@/services/badgeManagementService";
 import { authService } from "@/services/authService";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { getAdminSidebarLinks } from "@/config/sidebar";
 import { motion } from "motion/react";
 import Image from "next/image";
+import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faTrophy,
   faPlus,
   faEdit,
   faTrash,
-  faCheck,
-  faTimes,
-  faUpload,
   faChartLine,
   faMedal,
   faStar,
   faAward,
+  faUserGraduate,
+  faMobileAlt,
+  faUtensils,
+  faPiggyBank,
+  faLeaf,
+  faClipboardList,
+  faGift,
+  faHandshake,
+  faFire,
+  faCheckCircle,
+  faTimesCircle,
 } from "@fortawesome/free-solid-svg-icons";
 
 const BADGE_CATEGORIES = [
-  { value: "MILESTONE", label: "Milestone", color: "bg-blue-500" },
-  { value: "CHALLENGE_WINNER", label: "Challenge Winner", color: "bg-yellow-500" },
-  { value: "SPECIAL", label: "Special", color: "bg-purple-500" },
-];
-
-const MILESTONE_TYPES = [
-  "TOTAL_MEALS_COOKED",
-  "TOTAL_FOOD_SAVED",
-  "MONTHLY_MEALS_COOKED",
-  "YEARLY_MEALS_COOKED",
-  "MONTHLY_FOOD_SAVED",
-  "YEARLY_FOOD_SAVED",
-  "COOKING_STREAK",
-  "CHALLENGE_PARTICIPATION",
+  { value: BadgeCategory.ONBOARDING, label: "Onboarding", color: "bg-green-500", icon: faUserGraduate },
+  { value: BadgeCategory.USAGE, label: "Usage", color: "bg-blue-500", icon: faMobileAlt },
+  { value: BadgeCategory.COOKING, label: "Cooking", color: "bg-orange-500", icon: faUtensils },
+  { value: BadgeCategory.MONEY_SAVED, label: "Money Saved", color: "bg-green-600", icon: faPiggyBank },
+  { value: BadgeCategory.FOOD_SAVED, label: "Food Saved", color: "bg-lime-500", icon: faLeaf },
+  { value: BadgeCategory.PLANNING, label: "Planning", color: "bg-purple-500", icon: faClipboardList },
+  { value: BadgeCategory.BONUS, label: "Bonus", color: "bg-red-500", icon: faGift },
+  { value: BadgeCategory.SPONSOR, label: "Sponsor", color: "bg-pink-500", icon: faHandshake },
+  { value: BadgeCategory.CHALLENGE_WINNER, label: "Challenge Winner", color: "bg-yellow-500", icon: faTrophy },
+  { value: BadgeCategory.SPECIAL, label: "Special", color: "bg-cyan-500", icon: faStar },
 ];
 
 export default function BadgesPage() {
@@ -48,23 +53,10 @@ export default function BadgesPage() {
   const [badges, setBadges] = useState<Badge[]>([]);
   const [stats, setStats] = useState<BadgeStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>("ALL");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>("");
-
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    imageUrl: "",
-    category: "MILESTONE" as "MILESTONE" | "CHALLENGE_WINNER" | "SPECIAL",
-    milestoneType: "",
-    threshold: 0,
-  });
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -94,51 +86,6 @@ export default function BadgesPage() {
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-
-
-  const handleCreateBadge = async () => {
-    setIsSubmitting(true);
-    try {
-      await badgeManagementService.createBadge(formData, imageFile || undefined);
-      await loadBadges();
-      await loadStats();
-      setShowCreateModal(false);
-      resetForm();
-    } catch (error: any) {
-      alert(error.response?.data?.message || "Failed to create badge");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleUpdateBadge = async () => {
-    if (!selectedBadge) return;
-    setIsSubmitting(true);
-    try {
-      await badgeManagementService.updateBadge(selectedBadge._id, formData, imageFile || undefined);
-      await loadBadges();
-      await loadStats();
-      setShowEditModal(false);
-      resetForm();
-    } catch (error: any) {
-      alert(error.response?.data?.message || "Failed to update badge");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const handleDeleteBadge = async () => {
     if (!selectedBadge) return;
     setIsSubmitting(true);
@@ -155,42 +102,9 @@ export default function BadgesPage() {
     }
   };
 
-  const openCreateModal = () => {
-    resetForm();
-    setShowCreateModal(true);
-  };
-
-  const openEditModal = (badge: Badge) => {
-    setSelectedBadge(badge);
-    setFormData({
-      name: badge.name,
-      description: badge.description,
-      imageUrl: badge.imageUrl,
-      category: badge.category,
-      milestoneType: badge.milestoneType || "",
-      threshold: badge.threshold || 0,
-    });
-    setImagePreview(badge.imageUrl);
-    setShowEditModal(true);
-  };
-
   const openDeleteModal = (badge: Badge) => {
     setSelectedBadge(badge);
     setShowDeleteModal(true);
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      description: "",
-      imageUrl: "",
-      category: "MILESTONE",
-      milestoneType: "",
-      threshold: 0,
-    });
-    setImageFile(null);
-    setImagePreview("");
-    setSelectedBadge(null);
   };
 
   const handleLogout = async () => {
@@ -252,13 +166,12 @@ export default function BadgesPage() {
                   </p>
                 </div>
               </div>
-              <button
-                onClick={openCreateModal}
-                className="flex items-center gap-2 rounded-lg bg-saveful-green px-6 py-3 text-white font-saveful shadow-lg hover:bg-saveful-green/90 transition-all"
-              >
-                <FontAwesomeIcon icon={faPlus} />
-                Create Badge
-              </button>
+              <Link href="/admin/badges/create">
+                <button className="flex items-center gap-2 rounded-lg bg-saveful-green px-6 py-3 text-white font-saveful shadow-lg hover:bg-saveful-green/90 transition-all">
+                  <FontAwesomeIcon icon={faPlus} />
+                  Create Badge
+                </button>
+              </Link>
             </div>
           </motion.div>
 
@@ -285,7 +198,7 @@ export default function BadgesPage() {
               <div className="rounded-2xl bg-white p-6 shadow-lg">
                 <div className="flex items-center gap-4">
                   <div className="rounded-xl bg-green-100 p-3">
-                    <FontAwesomeIcon icon={faCheck} className="h-6 w-6 text-green-600" />
+                    <FontAwesomeIcon icon={faCheckCircle} className="h-6 w-6 text-green-600" />
                   </div>
                   <div>
                     <p className="text-sm font-saveful text-gray-600">Active Badges</p>
@@ -308,8 +221,8 @@ export default function BadgesPage() {
 
               <div className="rounded-2xl bg-white p-6 shadow-lg">
                 <div className="flex items-center gap-4">
-                  <div className="rounded-xl bg-yellow-100 p-3">
-                    <FontAwesomeIcon icon={faStar} className="h-6 w-6 text-yellow-600" />
+                  <div className="rounded-xl bg-pink-100 p-3">
+                    <FontAwesomeIcon icon={faMedal} className="h-6 w-6 text-pink-600" />
                   </div>
                   <div>
                     <p className="text-sm font-saveful text-gray-600">Recipients</p>
@@ -320,7 +233,7 @@ export default function BadgesPage() {
             </motion.div>
           )}
 
-          {/* Filter Tabs */}
+         
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -341,12 +254,13 @@ export default function BadgesPage() {
               <button
                 key={cat.value}
                 onClick={() => setFilterCategory(cat.value)}
-                className={`rounded-lg px-6 py-2 font-saveful transition-all ${
+                className={`flex items-center gap-2 rounded-lg px-6 py-2 font-saveful transition-all ${
                   filterCategory === cat.value
                     ? `${cat.color} text-white shadow-lg`
                     : "bg-white text-gray-700 hover:bg-gray-50"
                 }`}
               >
+                <FontAwesomeIcon icon={cat.icon} className="h-4 w-4" />
                 {cat.label}
               </button>
             ))}
@@ -414,12 +328,12 @@ export default function BadgesPage() {
                     <div className="mb-4 flex items-center justify-center gap-2">
                       {badge.isActive ? (
                         <>
-                          <FontAwesomeIcon icon={faCheck} className="h-4 w-4 text-green-600" />
+                          <FontAwesomeIcon icon={faCheckCircle} className="h-4 w-4 text-green-600" />
                           <span className="text-sm font-saveful text-green-600">Active</span>
                         </>
                       ) : (
                         <>
-                          <FontAwesomeIcon icon={faTimes} className="h-4 w-4 text-red-600" />
+                          <FontAwesomeIcon icon={faTimesCircle} className="h-4 w-4 text-red-600" />
                           <span className="text-sm font-saveful text-red-600">Inactive</span>
                         </>
                       )}
@@ -431,9 +345,9 @@ export default function BadgesPage() {
                         <p className="text-xs font-saveful text-gray-600">
                           {badge.milestoneType}
                         </p>
-                        {badge.threshold && (
+                        {badge.milestoneThreshold && (
                           <p className="text-xs font-saveful-bold text-gray-900">
-                            Threshold: {badge.threshold}
+                            Threshold: {badge.milestoneThreshold}
                           </p>
                         )}
                       </div>
@@ -441,13 +355,12 @@ export default function BadgesPage() {
 
                     {/* Actions */}
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => openEditModal(badge)}
-                        className="flex-1 rounded-lg bg-blue-500 px-4 py-2 text-sm text-white font-saveful hover:bg-blue-600 transition-all"
-                      >
-                        <FontAwesomeIcon icon={faEdit} className="mr-2" />
-                        Edit
-                      </button>
+                      <Link href={`/admin/badges/edit/${badge._id}`} className="flex-1">
+                        <button className="w-full rounded-lg bg-blue-500 px-4 py-2 text-sm text-white font-saveful hover:bg-blue-600 transition-all">
+                          <FontAwesomeIcon icon={faEdit} className="mr-2" />
+                          Edit
+                        </button>
+                      </Link>
                       <button
                         onClick={() => openDeleteModal(badge)}
                         className="flex-1 rounded-lg bg-red-500 px-4 py-2 text-sm text-white font-saveful hover:bg-red-600 transition-all"
@@ -470,154 +383,6 @@ export default function BadgesPage() {
           )}
         </div>
       </div>
-
-      {/* Create/Edit Modal */}
-      {(showCreateModal || showEditModal) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-2xl rounded-2xl bg-white p-8 shadow-2xl max-h-[90vh] overflow-y-auto"
-          >
-            <h2 className="mb-6 font-saveful-bold text-2xl text-gray-900">
-              {showCreateModal ? "Create New Badge" : "Edit Badge"}
-            </h2>
-
-            <div className="space-y-4">
-              {/* Image Upload */}
-              <div>
-                <label className="mb-2 block font-saveful text-sm text-gray-700">
-                  Badge Image
-                </label>
-                <div className="flex items-center gap-4">
-                  <div className="h-24 w-24 rounded-full bg-gray-100 overflow-hidden">
-                    {imagePreview ? (
-                      <img src={imagePreview} alt="Preview" className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex h-full items-center justify-center">
-                        <FontAwesomeIcon icon={faTrophy} className="h-12 w-12 text-gray-400" />
-                      </div>
-                    )}
-                  </div>
-                  <label className="cursor-pointer rounded-lg bg-gray-100 px-4 py-2 font-saveful text-sm hover:bg-gray-200">
-                    <FontAwesomeIcon icon={faUpload} className="mr-2" />
-                    Upload Image
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-              </div>
-
-              {/* Name */}
-              <div>
-                <label className="mb-2 block font-saveful text-sm text-gray-700">
-                  Badge Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 font-saveful focus:border-saveful-green focus:outline-none"
-                  placeholder="Enter badge name"
-                />
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="mb-2 block font-saveful text-sm text-gray-700">
-                  Description *
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={3}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 font-saveful focus:border-saveful-green focus:outline-none"
-                  placeholder="Enter badge description"
-                />
-              </div>
-
-              {/* Category */}
-              <div>
-                <label className="mb-2 block font-saveful text-sm text-gray-700">
-                  Category *
-                </label>
-                <select
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value as any })}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 font-saveful focus:border-saveful-green focus:outline-none"
-                >
-                  {BADGE_CATEGORIES.map((cat) => (
-                    <option key={cat.value} value={cat.value}>
-                      {cat.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Milestone Type */}
-              {formData.category === "MILESTONE" && (
-                <>
-                  <div>
-                    <label className="mb-2 block font-saveful text-sm text-gray-700">
-                      Milestone Type
-                    </label>
-                    <select
-                      value={formData.milestoneType}
-                      onChange={(e) => setFormData({ ...formData, milestoneType: e.target.value })}
-                      className="w-full rounded-lg border border-gray-300 px-4 py-2 font-saveful focus:border-saveful-green focus:outline-none"
-                    >
-                      <option value="">Select milestone type</option>
-                      {MILESTONE_TYPES.map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block font-saveful text-sm text-gray-700">
-                      Threshold
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.threshold}
-                      onChange={(e) => setFormData({ ...formData, threshold: parseInt(e.target.value) })}
-                      className="w-full rounded-lg border border-gray-300 px-4 py-2 font-saveful focus:border-saveful-green focus:outline-none"
-                      placeholder="Enter threshold value"
-                    />
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Actions */}
-            <div className="mt-8 flex gap-4">
-              <button
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setShowEditModal(false);
-                  resetForm();
-                }}
-                className="flex-1 rounded-lg border border-gray-300 px-6 py-3 font-saveful text-gray-700 hover:bg-gray-50 transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={showCreateModal ? handleCreateBadge : handleUpdateBadge}
-                disabled={isSubmitting || !formData.name || !formData.description}
-                className="flex-1 rounded-lg bg-saveful-green px-6 py-3 font-saveful text-white hover:bg-saveful-green/90 disabled:opacity-50 transition-all"
-              >
-                {isSubmitting ? "Saving..." : showCreateModal ? "Create Badge" : "Update Badge"}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
 
       {/* Delete Modal */}
       {showDeleteModal && selectedBadge && (
