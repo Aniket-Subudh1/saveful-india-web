@@ -219,3 +219,45 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom Scrollbar Styles */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 4px;
+  }
+  
+  .scrollbar-track-transparent::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .scrollbar-thumb-saveful-purple\/30::-webkit-scrollbar-thumb {
+    background-color: rgba(166, 143, 217, 0.3);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover,
+  .hover\:scrollbar-thumb-saveful-purple\/50:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(166, 143, 217, 0.5);
+  }
+  
+  /* Firefox scrollbar */
+  .scrollbar-thumb-saveful-purple\/30 {
+    scrollbar-color: rgba(166, 143, 217, 0.3) transparent;
+  }
+  
+  .hover\:scrollbar-thumb-saveful-purple\/50:hover {
+    scrollbar-color: rgba(166, 143, 217, 0.5) transparent;
+  }
+}
