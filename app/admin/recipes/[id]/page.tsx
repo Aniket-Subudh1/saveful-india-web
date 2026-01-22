@@ -85,9 +85,6 @@ export default function EditRecipePage() {
       setIngredients(ings);
       setRecipes(rec);
       
-      // Log the raw current recipe data
-      console.log('Raw recipe data from backend:', current);
-      
       const normalizeId = (value: any) => {
         if (!value) return "";
         if (typeof value === "string") return value;
@@ -164,27 +161,6 @@ export default function EditRecipePage() {
       const normalizedHackOrTipIds = normalizeIdArray(current.hackOrTipIds);
       const normalizedSponsorId = normalizeId(current.sponsorId);
       const normalizedStickerId = normalizeId(current.stickerId);
-      
-      console.log('Loading recipe - Framework Categories:', {
-        raw: current.frameworkCategories,
-        normalized: normalizedFrameworkCategories,
-        available: cats.map(c => ({ id: c._id, title: c.title }))
-      });
-      console.log('Loading recipe - Hacks/Tips:', {
-        raw: current.hackOrTipIds,
-        normalized: normalizedHackOrTipIds,
-        available: hacks.map(h => ({ id: h._id, title: h.title }))
-      });
-      console.log('Loading recipe - Sponsor:', {
-        raw: current.sponsorId,
-        normalized: normalizedSponsorId,
-        available: spons.map(s => ({ id: s._id, title: s.title }))
-      });
-      console.log('Loading recipe - Sticker:', {
-        raw: current.stickerId,
-        normalized: normalizedStickerId,
-        available: sticks.map((s: any) => ({ id: s._id, title: s.title }))
-      });
       
       setRecipeForm({
         title: current.title,
