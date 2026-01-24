@@ -334,26 +334,24 @@ const [open, setOpen] = useState<boolean>(false)
 
       console.log("\nFull cleaned data:", JSON.stringify(cleanedRecipeForm, null, 2));
 
-      // Comprehensive frontend validation before sending to backend
       const validationErrors: string[] = [];
 
-      // Check components structure
       if (cleanedRecipeForm.components.length === 0) {
         validationErrors.push("At least one component wrapper is required");
       }
 
-      cleanedRecipeForm.components.forEach((wrapper, wrapperIndex) => {
+      cleanedRecipeForm.components.forEach((wrapper: RecipeComponentWrapper, wrapperIndex: number) => {
         if (wrapper.component.length === 0) {
           validationErrors.push(`Component wrapper ${wrapperIndex + 1} must have at least one component`);
         }
 
-        wrapper.component.forEach((comp, compIndex) => {
+        wrapper.component.forEach((comp: Component, compIndex: number) => {
           if (!comp.componentTitle || comp.componentTitle.trim() === '') {
             validationErrors.push(`Component ${compIndex + 1} in wrapper ${wrapperIndex + 1} must have a title`);
           }
 
           // Check required ingredients have valid IDs
-          (comp.requiredIngredients || []).forEach((ing, ingIndex) => {
+          (comp.requiredIngredients || []).forEach((ing: RequiredIngredient, ingIndex: number) => {
             if (!ing.recommendedIngredient || ing.recommendedIngredient.trim() === '') {
               validationErrors.push(
                 `Required ingredient ${ingIndex + 1} in component ${compIndex + 1}, wrapper ${wrapperIndex + 1} must have a selected ingredient`
@@ -371,7 +369,7 @@ const [open, setOpen] = useState<boolean>(false)
             }
 
             // Check alternative ingredients
-            (ing.alternativeIngredients || []).forEach((alt, altIndex) => {
+            (ing.alternativeIngredients || []).forEach((alt: AlternativeIngredient, altIndex: number) => {
               if (!alt.ingredient || alt.ingredient.trim() === '') {
                 validationErrors.push(
                   `Alternative ingredient ${altIndex + 1} for required ingredient ${ingIndex + 1} in component ${compIndex + 1}, wrapper ${wrapperIndex + 1} must have a selected ingredient`
@@ -381,7 +379,7 @@ const [open, setOpen] = useState<boolean>(false)
           });
 
           // Check optional ingredients have valid IDs
-          (comp.optionalIngredients || []).forEach((ing, ingIndex) => {
+          (comp.optionalIngredients || []).forEach((ing: OptionalIngredient, ingIndex: number) => {
             if (!ing.ingredient || ing.ingredient.trim() === '') {
               validationErrors.push(
                 `Optional ingredient ${ingIndex + 1} in component ${compIndex + 1}, wrapper ${wrapperIndex + 1} must have a selected ingredient`
@@ -400,7 +398,7 @@ const [open, setOpen] = useState<boolean>(false)
           });
 
           // Check component steps
-          (comp.componentSteps || []).forEach((step, stepIndex) => {
+          (comp.componentSteps || []).forEach((step: ComponentStep, stepIndex: number) => {
             if (!step.stepInstructions || step.stepInstructions.trim() === '') {
               validationErrors.push(
                 `Step ${stepIndex + 1} in component ${compIndex + 1}, wrapper ${wrapperIndex + 1} must have instructions`
