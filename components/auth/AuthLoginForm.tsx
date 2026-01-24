@@ -61,7 +61,6 @@ export function AuthLoginForm({ config }: { config: LoginFormConfig }) {
     }));
   };
 
-  // Determine role-based styling
   const roleColor = config.role === "admin" ? "#2D5F4F" : "#F7931E";
   const roleGradient =
     config.role === "admin"
@@ -70,11 +69,9 @@ export function AuthLoginForm({ config }: { config: LoginFormConfig }) {
 
   return (
     <div className="relative mx-auto w-full max-w-md overflow-hidden rounded-3xl bg-white p-8 shadow-2xl md:p-10">
-      {/* Decorative circles */}
       <div className="pointer-events-none absolute -right-16 -top-16 h-32 w-32 rounded-full bg-[#A68FD9]/10"></div>
       <div className="pointer-events-none absolute -bottom-12 -left-12 h-24 w-24 rounded-full bg-[#E8B4D9]/10"></div>
 
-      {/* Logo */}
       <div className="mb-8 flex justify-center">
         <div className="relative h-16 w-40">
           <Image
