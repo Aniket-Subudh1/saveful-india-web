@@ -318,9 +318,8 @@ class IngredientManagementService {
     const token = authService.getStoredToken("admin");
     if (!token) throw new Error("No authentication token");
 
-    // Create abort controller with 2 minute timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes
+    const timeoutId = setTimeout(() => controller.abort(), 120000);  
 
     const response = await fetch(`${this.baseURL}/api/ingredients/${id}`, {
       method: "PATCH",
