@@ -138,17 +138,14 @@ class IngredientManagementService {
     return response.json();
   }
 
-  // Ingredient endpoints
   async createIngredient(
     data: CreateIngredientDto,
     files?: { heroImage?: File }
   ): Promise<Ingredient> {
     const formData = new FormData();
 
-    // Validate and append basic fields
     formData.append("name", data.name.trim());
     
-    // Ensure averageWeight is a valid positive number
     const avgWeight = Number(data.averageWeight);
     if (isNaN(avgWeight) || avgWeight <= 0) {
       throw new Error("Average weight must be a positive number");
@@ -200,13 +197,19 @@ class IngredientManagementService {
     const token = authService.getStoredToken("admin");
     if (!token) throw new Error("No authentication token");
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
+
     const response = await fetch(`${this.baseURL}/api/ingredients`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
       },
       body: formData,
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: "Failed to create ingredient" }));
@@ -315,13 +318,20 @@ class IngredientManagementService {
     const token = authService.getStoredToken("admin");
     if (!token) throw new Error("No authentication token");
 
+    // Create abort controller with 2 minute timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes
+
     const response = await fetch(`${this.baseURL}/api/ingredients/${id}`, {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${token}`,
       },
       body: formData,
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: "Failed to update ingredient" }));

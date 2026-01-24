@@ -193,7 +193,15 @@ export default function IngredientsPage() {
       await loadData();
     } catch (error: any) {
       console.error("Failed to save ingredient:", error);
-      alert(error?.message || "Failed to save ingredient");
+      
+      let errorMessage = "Failed to save ingredient";
+      if (error?.name === 'AbortError') {
+        errorMessage = "Request timeout: The operation took too long (>2 minutes). This might be due to a large image or network issues. Please try again with a smaller image.";
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      alert(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -209,12 +217,21 @@ export default function IngredientsPage() {
     setIsSubmitting(true);
     try {
       await ingredientManagementService.deleteIngredient(ingredientToDelete._id);
+      alert('Ingredient deleted successfully!');
       setShowDeleteModal(false);
       setIngredientToDelete(null);
       await loadData();
     } catch (error: any) {
       console.error("Failed to delete ingredient:", error);
-      alert(error?.response?.data?.message || "Failed to delete ingredient");
+      
+      let errorMessage = "Failed to delete ingredient";
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      alert(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -237,6 +254,14 @@ export default function IngredientsPage() {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate image size (max 5MB to prevent timeout)
+      const maxSizeInBytes = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSizeInBytes) {
+        alert(`Image file is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Please select an image smaller than 5MB to avoid timeout issues.`);
+        e.target.value = ''; // Clear the input
+        return;
+      }
+
       setHeroImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -249,6 +274,14 @@ export default function IngredientsPage() {
   const handleCategoryImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate image size (max 5MB to prevent timeout)
+      const maxSizeInBytes = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSizeInBytes) {
+        alert(`Image file is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Please select an image smaller than 5MB to avoid timeout issues.`);
+        e.target.value = ''; // Clear the input
+        return;
+      }
+
       setCategoryForm({ ...categoryForm, image: file });
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -284,14 +317,22 @@ export default function IngredientsPage() {
       
       const method = editingCategory ? "PATCH" : "POST";
 
+      // Create abort controller with 2 minute timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes
+
       const response = await fetch(url, {
         method,
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        throw new Error(`Failed to ${editingCategory ? 'update' : 'create'} category`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to ${editingCategory ? 'update' : 'create'} category`);
       }
 
       setCategoryForm({ name: "", image: undefined });

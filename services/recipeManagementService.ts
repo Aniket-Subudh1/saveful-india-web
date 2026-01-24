@@ -253,13 +253,20 @@ class RecipeManagementService {
         throw new Error("No authentication token available");
       }
 
+      // Create abort controller with 2 minute timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes
+
       const response = await fetch(`${this.API_BASE_URL}/api/api/recipe`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
         },
         body: formData,
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -320,13 +327,20 @@ class RecipeManagementService {
         throw new Error("No authentication token available");
       }
 
+      // Create abort controller with 2 minute timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes
+
       const response = await fetch(`${this.API_BASE_URL}/api/api/recipe/${recipeId}`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
         },
         body: formData,
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();

@@ -195,6 +195,14 @@ export default function EditRecipePage() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate image size (max 5MB to prevent timeout)
+      const maxSizeInBytes = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSizeInBytes) {
+        alert(`Image file is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Please select an image smaller than 5MB to avoid timeout issues.`);
+        e.target.value = ''; // Clear the input
+        return;
+      }
+
       setHeroImage(file);
       const reader = new FileReader();
       reader.onload = () => setHeroImagePreview(reader.result as string);
@@ -265,13 +273,91 @@ export default function EditRecipePage() {
         isActive: recipeForm.isActive,
       };
 
+      // Comprehensive frontend validation before sending to backend
+      const validationErrors: string[] = [];
+
+      // Check components structure
+      if (updateData.components && updateData.components.length === 0) {
+        validationErrors.push("At least one component wrapper is required");
+      }
+
+      if (updateData.components) {
+        updateData.components.forEach((wrapper: any, wrapperIndex: number) => {
+          if (wrapper.component.length === 0) {
+            validationErrors.push(`Component wrapper ${wrapperIndex + 1} must have at least one component`);
+          }
+
+          wrapper.component.forEach((comp: any, compIndex: number) => {
+            if (!comp.componentTitle || comp.componentTitle.trim() === '') {
+              validationErrors.push(`Component ${compIndex + 1} in wrapper ${wrapperIndex + 1} must have a title`);
+            }
+
+            // Check required ingredients
+            (comp.requiredIngredients || []).forEach((ing: any, ingIndex: number) => {
+              if (!ing.recommendedIngredient || ing.recommendedIngredient.trim() === '') {
+                validationErrors.push(
+                  `Required ingredient ${ingIndex + 1} in component ${compIndex + 1}, wrapper ${wrapperIndex + 1} must have a selected ingredient`
+                );
+              }
+            });
+
+            // Check optional ingredients
+            (comp.optionalIngredients || []).forEach((ing: any, ingIndex: number) => {
+              if (!ing.ingredient || ing.ingredient.trim() === '') {
+                validationErrors.push(
+                  `Optional ingredient ${ingIndex + 1} in component ${compIndex + 1}, wrapper ${wrapperIndex + 1} must have a selected ingredient`
+                );
+              }
+            });
+          });
+        });
+      }
+
+      // Check framework categories
+      if (updateData.frameworkCategories && updateData.frameworkCategories.length === 0) {
+        validationErrors.push("At least one framework category is required");
+      }
+
+      // Display validation errors if any
+      if (validationErrors.length > 0) {
+        alert("Please fix the following errors:\n\n" + validationErrors.join("\n"));
+        setIsSubmitting(false);
+        return;
+      }
+
       await recipeManagementService.updateRecipe(recipeId, updateData, heroImage || undefined);
       alert("Recipe updated successfully!");
       router.push("/admin/recipes");
       router.refresh();
     } catch (error: any) {
       console.error("Error updating recipe:", error);
-      alert(error?.response?.data?.message || "Failed to update recipe");
+      console.error("Error response:", error?.response?.data);
+
+      // Better error messaging
+      let errorMessage = "Failed to update recipe";
+      
+      // Handle abort/timeout errors
+      if (error?.name === 'AbortError') {
+        errorMessage = "Request timeout: The recipe update took too long (>2 minutes). This might be due to a large image or network issues. Please try again with a smaller image.";
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.response?.data?.errors) {
+        // Format validation errors more clearly
+        const validationErrors = error.response.data.errors;
+        errorMessage = "Validation failed:\n\n";
+        validationErrors.forEach((err: any) => {
+          errorMessage += `- ${err.property}: ${Object.values(err.constraints || {}).join(', ')}\n`;
+          if (err.children && err.children.length > 0) {
+            err.children.forEach((child: any) => {
+              errorMessage += `  - ${child.property}: ${Object.values(child.constraints || {}).join(', ')}\n`;
+            });
+          }
+        });
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      alert(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
