@@ -164,9 +164,10 @@ DEFAULT FIELD RULES
 - missingSuggestions.hacksOrTips: []
 `;
 
-// =======================
-// NEXT.JS API ROUTE LOGIC
-// =======================
+export const maxDuration = 60; 
+export const dynamic = 'force-dynamic'; 
+
+
 export async function POST(request: Request) {
     try {
         const body = await request.json();
@@ -238,7 +239,6 @@ export async function POST(request: Request) {
 
         let finalResponse: any = null;
 
-        // internal loop — runs until GPT completes
         while (true) {
             const completion = await openai.chat.completions.create({
                 model: "gpt-4o",
@@ -259,7 +259,6 @@ export async function POST(request: Request) {
                 break;
             }
 
-            // push assistant part that issued tool calls
             history.push({
                 role: "assistant",
                 content: null,

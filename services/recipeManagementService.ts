@@ -128,21 +128,45 @@ class RecipeManagementService {
 
   async getAllRecipes(): Promise<Recipe[]> {
     try {
+      console.log('Fetching recipes from:', `${this.API_BASE_URL}/api/api/recipe`);
+      
       const response = await apiGet(
         `${this.API_BASE_URL}/api/api/recipe`,
         "admin"
       );
 
+      console.log('Response status:', response.status, response.statusText);
+
       if (!response.ok) {
-        const error = await response.json().catch(() => ({
-          message: "Failed to fetch recipes",
-        }));
-        throw { response: { data: error } };
+        const errorText = await response.text();
+        console.error('Error response text:', errorText);
+        
+        let error;
+        try {
+          error = JSON.parse(errorText);
+        } catch {
+          error = { message: errorText || `Failed to fetch recipes (${response.status})` };
+        }
+        
+        throw { 
+          response: { 
+            data: error,
+            status: response.status,
+            statusText: response.statusText 
+          } 
+        };
       }
 
-      return response.json();
+      const data = await response.json();
+      console.log('Successfully fetched recipes:', data.length);
+      return data;
     } catch (error: any) {
-      console.error("Get all recipes error:", error);
+      console.error("Get all recipes error details:", {
+        message: error?.message,
+        status: error?.response?.status,
+        data: error?.response?.data,
+        error: error
+      });
       throw error;
     }
   }

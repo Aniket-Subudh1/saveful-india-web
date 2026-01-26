@@ -21,6 +21,12 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Increase API route body size limit for large recipe payloads
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '50mb',
+    },
+  },
 };
 
 export default nextConfig;
