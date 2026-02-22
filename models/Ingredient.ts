@@ -86,9 +86,10 @@ const IngredientSchema = new mongoose.Schema({
   nutrition: { type: String },
 
   order: { type: Number, default: 0 },
+
+  countries: { type: [String], default: [] },
 }, { timestamps: true });
 
-// Indexes
 IngredientSchema.index({ name: 1 });
 IngredientSchema.index({ categoryId: 1 });
 IngredientSchema.index({ hasPage: 1 });

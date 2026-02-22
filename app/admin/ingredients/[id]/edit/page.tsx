@@ -18,6 +18,7 @@ import { dietManagementService, DietCategory } from "@/services/dietManagementSe
 import { sponsorManagementService, Sponsor } from "@/services/sponsorManagementService";
 import { hackOrTipManagementService, HackOrTip } from "@/services/hackOrTipManagementService";
 import { stickerManagementService, Sticker } from "@/services/stickerManagementService";
+import { COUNTRIES } from "@/lib/countries";
 
 const MONTHS = Object.values(Month);
 const THEMES = Object.values(IngredientTheme);
@@ -85,6 +86,7 @@ export default function EditIngredientPage() {
             isPantryItem: ing.isPantryItem,
             nutrition: ing.nutrition,
             order: ing.order,
+            countries: ing.countries || [],
           };
           console.log('Setting form data:', formData);
           console.log('Hero Image URL from backend:', ing.heroImageUrl);
@@ -284,6 +286,33 @@ export default function EditIngredientPage() {
                 onChange={(e) => setForm({ ...form, hasPage: e.target.checked })}
               />
             </div>
+          </div>
+        </div>
+
+        {/* Countries */}
+        <div className="rounded-2xl border-2 border-gray-200 bg-white p-6">
+          <h3 className="mb-4 font-saveful-bold text-xl text-gray-800">Available Countries</h3>
+          <p className="mb-4 text-sm text-gray-500">Select the countries where this ingredient is available.</p>
+          <div className="flex flex-wrap gap-2">
+            {COUNTRIES.map((c) => {
+              const checked = (form.countries || []).includes(c.name);
+              return (
+                <label key={c.code} className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm cursor-pointer ${checked ? 'border-saveful-green bg-saveful-green/5' : 'border-gray-200 bg-white'}`}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => {
+                      const current = form.countries || [];
+                      setForm({
+                        ...form,
+                        countries: e.target.checked ? [...current, c.name] : current.filter((x) => x !== c.name),
+                      });
+                    }}
+                  />
+                  {c.name}
+                </label>
+              );
+            })}
           </div>
         </div>
 

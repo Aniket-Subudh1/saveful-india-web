@@ -68,6 +68,7 @@ export interface Recipe {
   components: RecipeComponentWrapper[];
   order?: number;
   isActive?: boolean;
+  countries?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -90,6 +91,7 @@ export interface CreateRecipeDto {
   components: RecipeComponentWrapper[];
   order?: number;
   isActive?: boolean;
+  countries?: string[];
 }
 
 export interface UpdateRecipeDto {
@@ -110,6 +112,7 @@ export interface UpdateRecipeDto {
   components?: RecipeComponentWrapper[];
   order?: number;
   isActive?: boolean;
+  countries?: string[];
 }
 
 export interface FrameworkCategory {
@@ -266,6 +269,9 @@ class RecipeManagementService {
       if (data.isActive !== undefined) {
         formData.append("isActive", data.isActive.toString());
       }
+      if (data.countries !== undefined) {
+        formData.append("countries", JSON.stringify(data.countries));
+      }
 
       // Append hero image if provided
       if (heroImage) {
@@ -340,6 +346,7 @@ class RecipeManagementService {
       if (data.useLeftoversIn !== undefined) formData.append("useLeftoversIn", JSON.stringify(data.useLeftoversIn));
       if (data.order !== undefined) formData.append("order", data.order.toString());
       if (data.isActive !== undefined) formData.append("isActive", data.isActive.toString());
+      if (data.countries !== undefined) formData.append("countries", JSON.stringify(data.countries));
 
       // Append hero image if provided
       if (heroImage) {

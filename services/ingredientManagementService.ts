@@ -82,6 +82,7 @@ export interface Ingredient {
   isPantryItem: boolean;
   nutrition?: string;
   order?: number;
+  countries?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -102,6 +103,7 @@ export interface CreateIngredientDto {
   isPantryItem?: boolean;
   nutrition?: string;
   order?: number;
+  countries?: string[];
 }
 
 export interface UpdateIngredientDto {
@@ -120,6 +122,7 @@ export interface UpdateIngredientDto {
   isPantryItem?: boolean;
   nutrition?: string;
   order?: number;
+  countries?: string[];
 }
 
 class IngredientManagementService {
@@ -185,13 +188,16 @@ class IngredientManagementService {
         formData.append("isPantryItem", data.isPantryItem ? "true" : "false");
       }
       
-      // Only append order if it's a valid number and greater than 0
       if (data.order !== undefined && data.order !== null) {
         const orderNum = Number(data.order);
         if (!isNaN(orderNum) && orderNum >= 0) {
           formData.append("order", orderNum.toString());
         }
       }
+    }
+
+    if (data.countries !== undefined) {
+      formData.append("countries", JSON.stringify(data.countries));
     }
 
     const token = authService.getStoredToken("admin");
@@ -313,6 +319,10 @@ class IngredientManagementService {
       if (!isNaN(orderNum) && orderNum >= 0) {
         formData.append("order", orderNum.toString());
       }
+    }
+
+    if (data.countries !== undefined) {
+      formData.append("countries", JSON.stringify(data.countries));
     }
 
     const token = authService.getStoredToken("admin");

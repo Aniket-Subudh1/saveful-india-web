@@ -9,6 +9,7 @@ import {
   LeaderboardStatsResponse,
 } from "@/services/leaderboardService";
 import { authService } from "@/services/authService";
+import { COUNTRIES } from "@/lib/countries";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { getAdminSidebarLinks } from "@/config/sidebar";
@@ -309,13 +310,18 @@ export default function LeaderboardPage() {
               {/* Location Filters */}
               <div>
                 <label className="mb-2 block font-saveful text-sm text-gray-700">Country</label>
-                <input
-                  type="text"
+                <select
                   value={countryFilter}
                   onChange={(e) => setCountryFilter(e.target.value)}
-                  placeholder="e.g., India"
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-saveful focus:border-saveful-green focus:outline-none"
-                />
+                >
+                  <option value="">All Countries</option>
+                  {COUNTRIES.map((c) => (
+                    <option key={c.code} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>

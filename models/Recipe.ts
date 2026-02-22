@@ -1,8 +1,5 @@
 import mongoose from 'mongoose';
 
-//
-// Subdocument: AlternativeIngredient
-//
 const AlternativeIngredientSchema = new mongoose.Schema({
   ingredient: {
     type: mongoose.Schema.Types.ObjectId,
@@ -15,9 +12,6 @@ const AlternativeIngredientSchema = new mongoose.Schema({
   preparation: { type: String },
 }, { _id: false });
 
-//
-// Subdocument: RequiredIngredient
-//
 const RequiredIngredientSchema = new mongoose.Schema({
   recommendedIngredient: {
     type: mongoose.Schema.Types.ObjectId,
@@ -32,9 +26,6 @@ const RequiredIngredientSchema = new mongoose.Schema({
   },
 }, { _id: false });
 
-//
-// Subdocument: OptionalIngredient
-//
 const OptionalIngredientSchema = new mongoose.Schema({
   ingredient: {
     type: mongoose.Schema.Types.ObjectId,
@@ -45,9 +36,7 @@ const OptionalIngredientSchema = new mongoose.Schema({
   preparation: { type: String, required: true },
 }, { _id: false });
 
-//
-// Subdocument: ComponentStep
-//
+
 const ComponentStepSchema = new mongoose.Schema({
   stepInstructions: { type: String, required: true },
   hackOrTipIds: [{
@@ -63,9 +52,6 @@ const ComponentStepSchema = new mongoose.Schema({
   }],
 }, { _id: false });
 
-//
-// Subdocument: Component
-//
 const ComponentSchema = new mongoose.Schema({
   componentTitle: { type: String, required: true },
   componentInstructions: { type: String },
@@ -75,9 +61,6 @@ const ComponentSchema = new mongoose.Schema({
   componentSteps: { type: [ComponentStepSchema], default: [] },
 }, { _id: false });
 
-//
-// Subdocument: RecipeComponentWrapper
-//
 const RecipeComponentWrapperSchema = new mongoose.Schema({
   prepShortDescription: { type: String },
   prepLongDescription: { type: String },
@@ -91,9 +74,7 @@ const RecipeComponentWrapperSchema = new mongoose.Schema({
   },
 }, { _id: false });
 
-//
-// Main Recipe Schema
-//
+
 const RecipeSchema = new mongoose.Schema({
   title: { type: String, required: true, index: true },
   shortDescription: { type: String, required: true },
@@ -144,12 +125,11 @@ const RecipeSchema = new mongoose.Schema({
 
   order: { type: Number, default: 0 },
   isActive: { type: Boolean, default: true, index: true },
+  countries: { type: [String], default: [] },
 
 }, { timestamps: true });
 
-//
-// Indexes
-//
+
 RecipeSchema.index({ title: 1 });
 RecipeSchema.index({ frameworkCategories: 1 });
 RecipeSchema.index({ isActive: 1 });

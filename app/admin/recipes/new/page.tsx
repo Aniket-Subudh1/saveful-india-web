@@ -36,10 +36,11 @@ import {
   faHexagonNodes,
 } from "@fortawesome/free-solid-svg-icons";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Loader2, ChefHat } from "lucide-react"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Loader2, ChefHat } from "lucide-react";
+import { COUNTRIES } from "@/lib/countries";
 
 // Define types outside component
 type ModalState = "idle" | "loading" | "success"
@@ -61,6 +62,7 @@ export default function NewRecipePage() {
     useLeftoversIn: [],
     components: [],
     isActive: true,
+    countries: [],
   });
   //for modal
 const [prompt, setPrompt] = useState<string>("")
@@ -1044,6 +1046,35 @@ function BasicInformationCard({
                 <span className="font-saveful text-sm">{rec.title}</span>
               </label>
             )) : null}
+          </div>
+        </div>
+
+        {/* Available Countries */}
+        <div>
+          <label className="mb-1 block font-saveful-semibold text-sm text-gray-700">Available Countries</label>
+          <p className="mb-2 text-xs text-gray-400">Select the countries where this recipe is available.</p>
+          <div className="flex flex-wrap gap-2">
+            {COUNTRIES.map((c) => {
+              const checked = (recipeForm.countries || []).includes(c.name);
+              return (
+                <label key={c.code} className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm cursor-pointer ${checked ? 'border-saveful-green bg-saveful-green/5' : 'border-gray-200 bg-white'}`}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => {
+                      setRecipeForm((prev: any) => ({
+                        ...prev,
+                        countries: e.target.checked
+                          ? [...(prev.countries || []), c.name]
+                          : (prev.countries || []).filter((x: string) => x !== c.name),
+                      }));
+                    }}
+                    className="rounded border-gray-300 text-saveful-green focus:ring-saveful-green"
+                  />
+                  <span className="font-saveful text-sm">{c.name}</span>
+                </label>
+              );
+            })}
           </div>
         </div>
 

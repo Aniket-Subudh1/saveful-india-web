@@ -15,6 +15,7 @@ import { sponsorManagementService, Sponsor } from "@/services/sponsorManagementS
 import { hackOrTipManagementService, HackOrTip } from "@/services/hackOrTipManagementService";
 import { stickerManagementService, Sticker } from "@/services/stickerManagementService";
 import { authService } from "@/services/authService";
+import { normalizeCountry } from "@/lib/countries";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { getAdminSidebarLinks } from "@/config/sidebar";
@@ -53,6 +54,7 @@ export default function IngredientsPage() {
   const [stickers, setStickers] = useState<Sticker[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<IngredientCategory | null>(null);
@@ -454,9 +456,23 @@ export default function IngredientsPage() {
     }
   };
 
-  const filteredIngredients = ingredients.filter(ingredient =>
-    ingredient.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Normalize raw DB values (codes like "IN" → "India") and deduplicate
+  const availableCountries = Array.from(
+    new Set(
+      ingredients
+        .flatMap((i) => i.countries ?? [])
+        .map(normalizeCountry)
+        .filter(Boolean),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
+
+  const filteredIngredients = ingredients.filter((ingredient) => {
+    const matchesSearch = ingredient.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCountry =
+      !selectedCountry ||
+      (ingredient.countries ?? []).map(normalizeCountry).includes(selectedCountry);
+    return matchesSearch && matchesCountry;
+  });
 
   const getCategoryName = (categoryId: string | IngredientCategory): string => {
     if (typeof categoryId === "object") return categoryId.name;
@@ -580,7 +596,7 @@ export default function IngredientsPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6"
+            className="mb-6 grid gap-4 md:grid-cols-2"
           >
             <div className="relative">
               <FontAwesomeIcon
@@ -595,6 +611,18 @@ export default function IngredientsPage() {
                 className="w-full rounded-xl border-2 border-gray-200 bg-white py-3 pl-12 pr-4 font-saveful shadow-sm transition-all focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
               />
             </div>
+            <select
+              value={selectedCountry}
+              onChange={(e) => setSelectedCountry(e.target.value)}
+              className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 font-saveful shadow-sm transition-all focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
+            >
+              <option value="">All Countries</option>
+              {availableCountries.map((country) => (
+                <option key={country} value={country}>
+                  {country}
+                </option>
+              ))}
+            </select>
           </motion.div>
 
           {/* Ingredients Table */}
