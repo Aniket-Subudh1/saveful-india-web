@@ -623,6 +623,14 @@ export default function UsersPage() {
                         </p>
                       </div>
                     )}
+                    {selectedUser.onboarding.pincode && (
+                      <div>
+                        <p className="font-saveful text-xs text-gray-500">Pin / Post / Zip Code</p>
+                        <p className="font-saveful-semibold text-saveful-black">
+                          {selectedUser.onboarding.pincode}
+                        </p>
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <p className="font-saveful text-xs text-gray-500">Adults</p>
