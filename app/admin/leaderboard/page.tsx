@@ -317,7 +317,7 @@ export default function LeaderboardPage() {
                 >
                   <option value="">All Countries</option>
                   {COUNTRIES.map((c) => (
-                    <option key={c.code} value={c.name}>
+                    <option key={c.code} value={c.code}>
                       {c.name}
                     </option>
                   ))}
