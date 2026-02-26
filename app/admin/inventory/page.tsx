@@ -750,7 +750,6 @@ function UserRow({
                 </div>
               ) : (
                 <div className="grid gap-6 md:grid-cols-2">
-                  {/* ── User Profile ── */}
                   <div className="rounded-xl bg-gray-50 p-4">
                     <h3 className="mb-3 font-saveful-bold text-sm text-saveful-green">
                       User Profile
@@ -767,7 +766,6 @@ function UserRow({
                     </div>
                   </div>
 
-                  {/* ── Household & Dietary ── */}
                   <div className="rounded-xl bg-gray-50 p-4">
                     <h3 className="mb-3 font-saveful-bold text-sm text-saveful-green">
                       Dietary Profile
@@ -810,7 +808,6 @@ function UserRow({
                     )}
                   </div>
 
-                  {/* ── Inventory Summary ── */}
                   {inventory && (
                     <div className="rounded-xl bg-gray-50 p-4 md:col-span-2">
                       <h3 className="mb-3 font-saveful-bold text-sm text-saveful-green">
