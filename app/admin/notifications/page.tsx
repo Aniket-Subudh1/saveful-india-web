@@ -93,7 +93,7 @@ export default function NotificationsPage() {
     try {
       const data = await notificationManagementService.getNotifications(page, 10, status || undefined);
       setNotifications(data.notifications);
-      setHistoryTotalPages(data.totalPages);
+      setHistoryTotalPages(data.pages);
     } catch (err: any) {
       console.error("Failed to load notifications:", err);
     } finally {
@@ -238,7 +238,7 @@ export default function NotificationsPage() {
                   <div>
                     <p className="text-xs font-saveful text-gray-500">iOS / Android</p>
                     <p className="text-xl font-saveful-bold text-gray-900">
-                      {stats.iosSplit} / {stats.androidSplit}
+                      {stats.iosTokens} / {stats.androidTokens}
                     </p>
                   </div>
                 </div>
@@ -251,7 +251,7 @@ export default function NotificationsPage() {
                   </div>
                   <div>
                     <p className="text-xs font-saveful text-gray-500">Queued</p>
-                    <p className="text-xl font-saveful-bold text-gray-900">{stats.queued}</p>
+                    <p className="text-xl font-saveful-bold text-gray-900">{stats.queuedNotifications}</p>
                   </div>
                 </div>
               </div>

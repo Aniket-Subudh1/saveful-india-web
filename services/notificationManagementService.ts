@@ -5,10 +5,17 @@ import { apiGet, apiPost } from "@/lib/apiClient";
 export interface NotificationStats {
   totalTokens: number;
   activeTokens: number;
-  iosSplit: number;
-  androidSplit: number;
-  queued: number;
+  iosTokens: number;
+  androidTokens: number;
+  queuedNotifications: number;
   sentToday: number;
+  queue: {
+    waiting: number;
+    active: number;
+    completed: number;
+    failed: number;
+    delayed: number;
+  };
 }
 
 export interface NotificationRecord {
@@ -24,8 +31,8 @@ export interface NotificationRecord {
   targetUserIds?: string[];
   retryCount: number;
   maxRetries: number;
-  sentCount?: number;
-  failedCount?: number;
+  successCount?: number;
+  failureCount?: number;
   scheduledAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -35,7 +42,7 @@ export interface NotificationListResponse {
   notifications: NotificationRecord[];
   total: number;
   page: number;
-  totalPages: number;
+  pages: number;
 }
 
 export interface SendNotificationPayload {
