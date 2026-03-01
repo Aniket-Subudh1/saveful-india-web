@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { OpenAI } from "openai";
-import { getIngredients, getFrameworkCategories, getHacksOrTips, getRecipes } from "@/app/functions/recipeTools";
+import {
+  getOrCreateIngredient,
+  getFrameworkCategories,
+  getHacksOrTips,
+  getRecipes,
+} from "@/app/functions/recipeTools";
 
 import extractRecipePayload from "@/app/functions/extractRecipePayload";
 const recipeMemory = new Map();
@@ -10,143 +15,145 @@ const RECIPE_SYSTEM_PROMPT = `
 You are a Recipe Construction Agent designed to generate structured recipe JSON compliant with the Recipe Schema. You will enrich recipes using culinary reasoning while strictly respecting external data sources.
 
 ====================
+CRITICAL ID RULES — READ CAREFULLY
+====================
+
+- Every ingredient, hack, tip, category, and recipe reference in your JSON MUST be a real MongoDB ObjectId string like "507f1f77bcf86cd799439011".
+- You get these IDs ONLY from tool call responses.
+- NEVER use placeholder strings like "ingredient_id_paneer", "category_id_dinner", "" or any invented text.
+- NEVER use an empty string "" as an ingredient ID.
+
+====================
+INGREDIENT RULE (MOST IMPORTANT)
+====================
+
+For EVERY ingredient in the recipe, you MUST call:
+   getOrCreateIngredient(name: "Paneer", categoryName: "Dairy")
+
+This tool ALWAYS returns a real MongoDB _id. It searches the database first.
+If the ingredient does not exist, it auto-creates it and returns the new _id.
+You will NEVER get an empty result. You ALWAYS get back {_id, name}.
+
+Use the returned "_id" value directly in:
+  - recommendedIngredient
+  - alternativeIngredients[].ingredient
+  - optionalIngredients[].ingredient
+  - componentSteps[].relevantIngredients[]
+
+Call this tool ONCE for EACH unique ingredient. Do NOT skip any ingredient.
+
+====================
 CORE BEHAVIOR RULES
 ====================
 
 1. You MUST NOT invent IDs or fabricate database records.
-2. For ingredient, hack, tip, category, and leftover IDs:
-   -> lookup is done via tool calls only.
-3. If lookup fails:
-   -> DO NOT add any fabricated ID or placeholder.
-   -> Add missing item to "missingSuggestions" section instead.
-4. Only "useLeftoversIn" requires real lookups — do not create new recipes.
+2. For hacks, tips, categories, and recipes → use the respective lookup tools.
+3. If hack/tip or category lookup returns empty:
+   -> DO NOT add fabricated IDs.
+   -> Add missing item to "missingSuggestions" section.
+4. Only "useLeftoversIn" requires recipe lookup.
 5. Do not output tool responses directly.
-6. Do not hallucinate brand names, chef names, copyrighted text, or real product marketing.
-7. Non-ID fields (like instructions and description) are generated normally by reasoning.
-8. Always return the final JSON at the end, without commentary.
+6. Do not hallucinate brand names, chef names, copyrighted text.
+7. Your FINAL output must be ONLY raw JSON. No markdown, no code fences, no commentary.
+
+====================
+EXTERNAL LINK HANDLING
+====================
+
+If the user provides:
+- A YouTube link
+- An Instagram link
+- Any website URL, blog link, or recipe webpage link
+
+You MUST:
+
+1. Use culinary knowledge and web_search to understand the recipe from the link.
+2. Reconstruct the FULL recipe into the required JSON schema.
+3. Preserve the original recipe intent exactly as described in the source.
+4. After extracting recipe data → call internal tools to fetch valid IDs.
+5. If the link is a YouTube video → extract youtubeId from the URL.
+6. If scraping fails → fall back to culinary reasoning while respecting all schema rules.
 
 ====================
 TOOL CALL LOGIC
 ====================
 
-You have 4 tools:
+You have 5 tools:
 
-1. getIngredients(query)
-2. getHacksOrTips(query)
-3. getFrameworkCategories(query) only have Lunch , Dinner , Breakfast //call accordingly
-4. getRecipes(query)
+1. getOrCreateIngredient(name, categoryName?)
+   → ALWAYS returns {_id, name}. Auto-creates if not in DB.
+   → Call ONCE per unique ingredient name.
+   → categoryName: "Dairy", "Vegetables", "Spices", "Meat", "Grains", "Oils & Fats", "Herbs", "Condiments", "Fruits", "Nuts & Seeds", "Seafood", etc.
 
-"query" means a free-text search phrase such as:
-"paneer", "tomato", "north indian", "creamy", "leftover paneer", etc.
+2. getHacksOrTips(query) → returns [{_id, title, shortDescription}]
+3. getFrameworkCategories(query) → returns [{_id, title}] (Lunch, Dinner, Breakfast)
+4. getRecipes(query) → returns [{_id, title}] for useLeftoversIn
 
-Process:
-- Call tool whenever you need IDs
-- Use semantic query words, not IDs
-- Extract only "_id" from returned results
-- If no records found:
-    -> do not add to JSON
-    -> push suggestion under missingSuggestions
-
-====================
-CHAIN OF THOUGHT (HIDDEN)
-====================
-
-Internally, you may reason through:
-1. Interpret recipe request
-2. Identify likely Ingredients & Components
-3. Decide Cooking Steps & Tags
-4. Trigger tool lookups with semantic queries
-5. Populate JSON strictly according to schema
-6. Store missing matches as suggestions
-7. Validate JSON before output
-
-Do not reveal chain-of-thought. Only output the final JSON + suggestions.
+Call getOrCreateIngredient ONCE for EACH unique ingredient. Do NOT skip any.
 
 ====================
 FINAL OUTPUT FORMAT
 ====================
 
-You must output:
+Output ONLY this raw JSON (no markdown fences, no text before/after):
 
 {
-  "recipe": { ... FULL RECIPE JSON ... },
+  "recipe": {
+    "title": "string",
+    "shortDescription": "string",
+    "longDescription": "string",
+    "hackOrTipIds": ["real_objectId_string"],
+    "heroImageUrl": "",
+    "youtubeId": "",
+    "portions": "3-4 servings",
+    "prepCookTime": 30,
+    "stickerId": "",
+    "frameworkCategories": ["real_objectId_string"],
+    "sponsorId": "",
+    "fridgeKeepTime": "2 days",
+    "freezeKeepTime": "1 month",
+    "useLeftoversIn": [],
+    "components": [
+      {
+        "prepShortDescription": "string",
+        "prepLongDescription": "string",
+        "variantTags": [],
+        "stronglyRecommended": false,
+        "choiceInstructions": "string",
+        "buttonText": "string",
+        "component": [
+          {
+            "componentTitle": "string",
+            "componentInstructions": "string",
+            "includedInVariants": [],
+            "requiredIngredients": [
+              {
+                "recommendedIngredient": "real_objectId_from_tool",
+                "quantity": "250g",
+                "preparation": "cubed",
+                "alternativeIngredients": []
+              }
+            ],
+            "optionalIngredients": [],
+            "componentSteps": [
+              {
+                "stepInstructions": "Heat oil in a pan...",
+                "hackOrTipIds": [],
+                "alwaysShow": true,
+                "relevantIngredients": ["real_objectId_from_tool"]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "order": 42,
+    "isActive": true
+  },
   "missingSuggestions": {
-    "ingredients": [ ... ],
-    "hacksOrTips": [ ... ]
+    "ingredients": [],
+    "hacksOrTips": []
   }
-}
-
-====================
-RECIPE JSON SCHEMA ENFORCEMENT
-====================
-
-Final JSON must contain:
-
-{
-  "title": "string",
-  "shortDescription": "string",
-  "longDescription": "string",
-  "hackOrTipIds": ["string", ...],
-  "heroImageUrl": "string or empty",
-  "youtubeId": "string or empty",
-  "portions": "ex: 3-4 servings",
-  "prepCookTime": integer-minutes,
-  "stickerId": "",
-  "frameworkCategories": ["string", ...],
-  "sponsorId": "",
-  "fridgeKeepTime": "ex: 2 days",
-  "freezeKeepTime": "ex: 1 month",
-  "useLeftoversIn": ["string", ...],
-  "components": [
-    {
-      "prepShortDescription": "string",
-      "prepLongDescription": "string",
-      "variantTags": ["string", ...],
-      "stronglyRecommended": boolean,
-      "choiceInstructions": "string",
-      "buttonText": "string",
-      "component": [
-        {
-          "componentTitle": "string",
-          "componentInstructions": "string",
-          "includedInVariants": ["string", ...],
-          "requiredIngredients": [
-            {
-              "recommendedIngredient": "string of _id",
-              "quantity": "string",
-              "preparation": "string",
-              "alternativeIngredients": [
-                {
-                  "ingredient": "string of _id",
-                  "inheritQuantity": boolean,
-                  "inheritPreparation": boolean,
-                  "quantity": "string",
-                  "preparation": "string"
-                }
-              ]
-            }
-          ],
-          "optionalIngredients": [
-            {
-              "ingredient": "string of _id",
-              "quantity": "string",
-              "preparation": "string"
-            }
-          ],
-          "componentSteps": [
-            {
-              "stepInstructions": "string",
-              "hackOrTipIds": ["string", ...],
-              "alwaysShow": boolean,
-              "relevantIngredients": ["string", ...]
-            }
-          ]
-        }
-      ]
-    }
-  ],
-  "order": 0,//random value from 1 to 100 to help sort recipes
-  "isActive": true
 }
 
 ====================
@@ -154,7 +161,7 @@ DEFAULT FIELD RULES
 ====================
 
 - heroImageUrl: "" if none found
-- youtubeId: "" if none found
+- youtubeId: "" if none found; extract video ID from YouTube URL if provided
 - stickerId: ""
 - sponsorId: ""
 - hackOrTipIds: [] if not found
@@ -162,6 +169,9 @@ DEFAULT FIELD RULES
 - useLeftoversIn: []
 - missingSuggestions.ingredients: []
 - missingSuggestions.hacksOrTips: []
+- Generate a random "order" value between 1-100
+- "isActive" always true
+- Include minimum 3-4 components in the component array
 `;
 
 // =======================
@@ -189,12 +199,15 @@ export async function POST(request: Request) {
             {
                 type: "function" as const,
                 function: {
-                    name: "getIngredients",
-                    description: "lookup ingredients by natural query",
+                    name: "getOrCreateIngredient",
+                    description: "Find ingredient by name. If not in DB, auto-creates it. ALWAYS returns {_id, name}. Call ONCE per unique ingredient.",
                     parameters: {
                         type: "object",
-                        properties: { query: { type: "string" } },
-                        required: ["query"]
+                        properties: {
+                            name: { type: "string", description: "Exact ingredient name, e.g. 'Paneer', 'Tomato', 'Olive Oil'" },
+                            categoryName: { type: "string", description: "Category: 'Dairy', 'Vegetables', 'Spices', 'Meat', 'Grains', 'Oils & Fats', 'Herbs', 'Condiments', etc." }
+                        },
+                        required: ["name"]
                     }
                 }
             },
@@ -202,7 +215,7 @@ export async function POST(request: Request) {
                 type: "function" as const,
                 function: {
                     name: "getHacksOrTips",
-                    description: "lookup hacks and tips by semantic query",
+                    description: "Lookup hacks and tips by semantic query. Returns [{_id, title, shortDescription}].",
                     parameters: {
                         type: "object",
                         properties: { query: { type: "string" } },
@@ -214,7 +227,7 @@ export async function POST(request: Request) {
                 type: "function" as const,
                 function: {
                     name: "getFrameworkCategories",
-                    description: "lookup recipe framework categories",
+                    description: "Lookup framework categories (Lunch, Dinner, Breakfast). Returns [{_id, title}].",
                     parameters: {
                         type: "object",
                         properties: { query: { type: "string" } },
@@ -226,7 +239,7 @@ export async function POST(request: Request) {
                 type: "function" as const,
                 function: {
                     name: "getRecipes",
-                    description: "lookup recipes to use leftovers in",
+                    description: "Lookup recipes to use leftovers in. Returns [{_id, title}].",
                     parameters: {
                         type: "object",
                         properties: { query: { type: "string" } },
@@ -237,9 +250,13 @@ export async function POST(request: Request) {
         ];
 
         let finalResponse: any = null;
+        const MAX_ITERATIONS = 20;
+        let iteration = 0;
 
         // internal loop — runs until GPT completes
-        while (true) {
+        while (iteration < MAX_ITERATIONS) {
+            iteration++;
+
             const completion = await openai.chat.completions.create({
                 model: "gpt-4o",
                 messages: history,
@@ -253,10 +270,19 @@ export async function POST(request: Request) {
             if (!msg.tool_calls) {
                 history.push(msg);
                 const raw = msg.content || "";
-                const { recipe, missingSuggestions } = extractRecipePayload(raw);
 
-                finalResponse = { recipe, missingSuggestions };
-                break;
+                try {
+                    const { recipe, missingSuggestions } = extractRecipePayload(raw);
+                    finalResponse = { recipe, missingSuggestions };
+                    break;
+                } catch (parseErr: any) {
+                    console.warn("JSON parse failed, asking model to fix:", parseErr.message);
+                    history.push({
+                        role: "user",
+                        content: "Your previous output was not valid JSON. Please output ONLY the raw JSON object with no markdown code fences, no commentary, and no text before or after the JSON. Start with { and end with }."
+                    });
+                    continue;
+                }
             }
 
             // push assistant part that issued tool calls
@@ -275,10 +301,17 @@ export async function POST(request: Request) {
 
                 let result: any = [];
 
-                if (fn === "getIngredients") result = await getIngredients(args.query);
-                if (fn === "getHacksOrTips") result = await getHacksOrTips(args.query);
-                if (fn === "getFrameworkCategories") result = await getFrameworkCategories(args.query);
-                if (fn === "getRecipes") result = await getRecipes(args.query);
+                try {
+                    if (fn === "getOrCreateIngredient") result = await getOrCreateIngredient(args.name, args.categoryName);
+                    if (fn === "getHacksOrTips") result = await getHacksOrTips(args.query);
+                    if (fn === "getFrameworkCategories") result = await getFrameworkCategories(args.query);
+                    if (fn === "getRecipes") result = await getRecipes(args.query);
+                } catch (err: any) {
+                    console.error(`Tool ${fn} error:`, err);
+                    result = { error: `Failed to execute ${fn}: ${err.message}` };
+                }
+
+                console.log(`[agent] ${fn}(${JSON.stringify(args)}) =>`, JSON.stringify(result).substring(0, 200));
 
                 // send response for this specific tool call
                 history.push({
@@ -291,7 +324,9 @@ export async function POST(request: Request) {
             // continue loop and let GPT consume tool responses
         }
 
-
+        if (!finalResponse) {
+            throw new Error("Agent exceeded max iterations without completing");
+        }
 
         return NextResponse.json({
             completed: true,
@@ -300,7 +335,7 @@ export async function POST(request: Request) {
         });
 
     } catch (err: any) {
-        console.error(err);
+        console.error("Agent error:", err);
         return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }
