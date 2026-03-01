@@ -15,6 +15,7 @@ import { sponsorManagementService, Sponsor } from "@/services/sponsorManagementS
 import { hackOrTipManagementService, HackOrTip } from "@/services/hackOrTipManagementService";
 import { stickerManagementService, Sticker } from "@/services/stickerManagementService";
 import { authService } from "@/services/authService";
+import { normalizeCountry } from "@/lib/countries";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { getAdminSidebarLinks } from "@/config/sidebar";
@@ -53,6 +54,7 @@ export default function IngredientsPage() {
   const [stickers, setStickers] = useState<Sticker[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<IngredientCategory | null>(null);
@@ -193,7 +195,15 @@ export default function IngredientsPage() {
       await loadData();
     } catch (error: any) {
       console.error("Failed to save ingredient:", error);
-      alert(error?.message || "Failed to save ingredient");
+      
+      let errorMessage = "Failed to save ingredient";
+      if (error?.name === 'AbortError') {
+        errorMessage = "Request timeout: The operation took too long (>2 minutes). This might be due to a large image or network issues. Please try again with a smaller image.";
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      alert(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -209,12 +219,21 @@ export default function IngredientsPage() {
     setIsSubmitting(true);
     try {
       await ingredientManagementService.deleteIngredient(ingredientToDelete._id);
+      alert('Ingredient deleted successfully!');
       setShowDeleteModal(false);
       setIngredientToDelete(null);
       await loadData();
     } catch (error: any) {
       console.error("Failed to delete ingredient:", error);
-      alert(error?.response?.data?.message || "Failed to delete ingredient");
+      
+      let errorMessage = "Failed to delete ingredient";
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      alert(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -237,6 +256,14 @@ export default function IngredientsPage() {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate image size (max 5MB to prevent timeout)
+      const maxSizeInBytes = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSizeInBytes) {
+        alert(`Image file is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Please select an image smaller than 5MB to avoid timeout issues.`);
+        e.target.value = ''; // Clear the input
+        return;
+      }
+
       setHeroImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -249,6 +276,14 @@ export default function IngredientsPage() {
   const handleCategoryImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate image size (max 5MB to prevent timeout)
+      const maxSizeInBytes = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSizeInBytes) {
+        alert(`Image file is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Please select an image smaller than 5MB to avoid timeout issues.`);
+        e.target.value = ''; // Clear the input
+        return;
+      }
+
       setCategoryForm({ ...categoryForm, image: file });
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -284,14 +319,22 @@ export default function IngredientsPage() {
       
       const method = editingCategory ? "PATCH" : "POST";
 
+      // Create abort controller with 2 minute timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes
+
       const response = await fetch(url, {
         method,
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        throw new Error(`Failed to ${editingCategory ? 'update' : 'create'} category`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to ${editingCategory ? 'update' : 'create'} category`);
       }
 
       setCategoryForm({ name: "", image: undefined });
@@ -413,9 +456,23 @@ export default function IngredientsPage() {
     }
   };
 
-  const filteredIngredients = ingredients.filter(ingredient =>
-    ingredient.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Normalize raw DB values (codes like "IN" → "India") and deduplicate
+  const availableCountries = Array.from(
+    new Set(
+      ingredients
+        .flatMap((i) => i.countries ?? [])
+        .map(normalizeCountry)
+        .filter(Boolean),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
+
+  const filteredIngredients = ingredients.filter((ingredient) => {
+    const matchesSearch = ingredient.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCountry =
+      !selectedCountry ||
+      (ingredient.countries ?? []).map(normalizeCountry).includes(selectedCountry);
+    return matchesSearch && matchesCountry;
+  });
 
   const getCategoryName = (categoryId: string | IngredientCategory): string => {
     if (typeof categoryId === "object") return categoryId.name;
@@ -539,7 +596,7 @@ export default function IngredientsPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6"
+            className="mb-6 grid gap-4 md:grid-cols-2"
           >
             <div className="relative">
               <FontAwesomeIcon
@@ -554,6 +611,18 @@ export default function IngredientsPage() {
                 className="w-full rounded-xl border-2 border-gray-200 bg-white py-3 pl-12 pr-4 font-saveful shadow-sm transition-all focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
               />
             </div>
+            <select
+              value={selectedCountry}
+              onChange={(e) => setSelectedCountry(e.target.value)}
+              className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 font-saveful shadow-sm transition-all focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
+            >
+              <option value="">All Countries</option>
+              {availableCountries.map((country) => (
+                <option key={country} value={country}>
+                  {country}
+                </option>
+              ))}
+            </select>
           </motion.div>
 
           {/* Ingredients Table */}

@@ -82,6 +82,7 @@ export interface Ingredient {
   isPantryItem: boolean;
   nutrition?: string;
   order?: number;
+  countries?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -102,6 +103,7 @@ export interface CreateIngredientDto {
   isPantryItem?: boolean;
   nutrition?: string;
   order?: number;
+  countries?: string[];
 }
 
 export interface UpdateIngredientDto {
@@ -120,6 +122,7 @@ export interface UpdateIngredientDto {
   isPantryItem?: boolean;
   nutrition?: string;
   order?: number;
+  countries?: string[];
 }
 
 class IngredientManagementService {
@@ -138,17 +141,14 @@ class IngredientManagementService {
     return response.json();
   }
 
-  // Ingredient endpoints
   async createIngredient(
     data: CreateIngredientDto,
     files?: { heroImage?: File }
   ): Promise<Ingredient> {
     const formData = new FormData();
 
-    // Validate and append basic fields
     formData.append("name", data.name.trim());
     
-    // Ensure averageWeight is a valid positive number
     const avgWeight = Number(data.averageWeight);
     if (isNaN(avgWeight) || avgWeight <= 0) {
       throw new Error("Average weight must be a positive number");
@@ -188,7 +188,6 @@ class IngredientManagementService {
         formData.append("isPantryItem", data.isPantryItem ? "true" : "false");
       }
       
-      // Only append order if it's a valid number and greater than 0
       if (data.order !== undefined && data.order !== null) {
         const orderNum = Number(data.order);
         if (!isNaN(orderNum) && orderNum >= 0) {
@@ -197,8 +196,15 @@ class IngredientManagementService {
       }
     }
 
+    if (data.countries !== undefined) {
+      formData.append("countries", JSON.stringify(data.countries));
+    }
+
     const token = authService.getStoredToken("admin");
     if (!token) throw new Error("No authentication token");
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
 
     const response = await fetch(`${this.baseURL}/api/ingredients`, {
       method: "POST",
@@ -206,7 +212,10 @@ class IngredientManagementService {
         Authorization: `Bearer ${token}`,
       },
       body: formData,
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: "Failed to create ingredient" }));
@@ -312,8 +321,15 @@ class IngredientManagementService {
       }
     }
 
+    if (data.countries !== undefined) {
+      formData.append("countries", JSON.stringify(data.countries));
+    }
+
     const token = authService.getStoredToken("admin");
     if (!token) throw new Error("No authentication token");
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000);  
 
     const response = await fetch(`${this.baseURL}/api/ingredients/${id}`, {
       method: "PATCH",
@@ -321,7 +337,10 @@ class IngredientManagementService {
         Authorization: `Bearer ${token}`,
       },
       body: formData,
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: "Failed to update ingredient" }));

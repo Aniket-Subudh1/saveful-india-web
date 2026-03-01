@@ -12,13 +12,14 @@ export function DashboardLayout({ config, children }: DashboardLayoutProps) {
     <div className="flex h-screen w-full flex-col overflow-hidden bg-saveful-cream md:flex-row">
       <Sidebar open={open} setOpen={setOpen}>
         <SidebarBody className="justify-between gap-0">
-          <div className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
-            <div className="mb-6 px-2">
+          <div className="flex flex-1 flex-col overflow-hidden">
+            {/* Fixed Logo Section */}
+            <div className={`mb-6 ${open ? 'px-2' : 'flex justify-center px-0'}`}>
               {open ? <Logo /> : <LogoIcon />}
             </div>
             
             {/* Decorative Separator */}
-            <div className="relative mb-6 px-3">
+            <div className={`relative mb-6 ${open ? 'px-3' : 'px-2'}`}>
               <div className="h-0.5 bg-gradient-to-r from-transparent via-saveful-purple/40 to-transparent shadow-sm"></div>
               {open && (
                 <motion.div
@@ -38,15 +39,17 @@ export function DashboardLayout({ config, children }: DashboardLayoutProps) {
               )}
             </div>
 
-            <div className="flex flex-col gap-2 px-2">
-              {config.links.map((link, idx) => (
-                <SidebarLink key={idx} link={link} />
-              ))}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden pr-2 scrollbar-thin scrollbar-thumb-saveful-purple/30 scrollbar-track-transparent hover:scrollbar-thumb-saveful-purple/50">
+              <div className={`flex flex-col gap-2 ${open ? 'px-2' : 'px-0 items-center'}`}>
+                {config.links.map((link, idx) => (
+                  <SidebarLink key={idx} link={link} />
+                ))}
+              </div>
             </div>
           </div>
           
           <div className="border-t border-saveful-purple/10 pt-4">
-            <div className={open ? "px-2" : "flex justify-center px-2"}>
+            <div className={open ? "px-2" : "flex justify-center px-0"}>
               <SidebarLink
                 link={{
                   label: config.userName,
@@ -65,7 +68,7 @@ export function DashboardLayout({ config, children }: DashboardLayoutProps) {
         </SidebarBody>
       </Sidebar>
       <main className="flex flex-1 flex-col overflow-hidden">
-        <div className="h-full w-full overflow-y-auto">
+        <div className="h-full w-full overflow-y-auto scrollbar-thin scrollbar-thumb-saveful-purple/30 scrollbar-track-transparent hover:scrollbar-thumb-saveful-purple/50">
           {children}
         </div>
       </main>
@@ -103,9 +106,9 @@ const LogoIcon = () => {
   return (
     <a
       href="#"
-      className="group relative z-20 flex items-center justify-center rounded-lg bg-saveful-cream p-2 shadow-sm transition-all hover:bg-saveful-cream/80 hover:shadow-md"
+      className="group relative z-20 flex items-center justify-center rounded-lg bg-saveful-cream p-1.5 shadow-sm transition-all hover:bg-saveful-cream/80 hover:shadow-md"
     >
-      <div className="relative h-12 w-12 shrink-0 transition-transform group-hover:scale-105">
+      <div className="relative h-8 w-8 shrink-0 transition-transform group-hover:scale-105">
         <Image
           src="/notification_icon.png"
           alt="Saveful Icon"

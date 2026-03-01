@@ -7,6 +7,7 @@ import {
   FrameworkCategory,
 } from "@/services/recipeManagementService";
 import { frameworkCategoryManagementService, FrameworkCategory as FwCategory } from "@/services/frameworkCategoryManagementService";
+import { normalizeCountry } from "@/lib/countries";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { getAdminSidebarLinks } from "@/config/sidebar";
@@ -33,18 +34,17 @@ export default function RecipesPage() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [recipeToDelete, setRecipeToDelete] = useState<Recipe | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Load framework categories on mount
   useEffect(() => {
     if (!isLoading && user) {
       fetchCategories();
     }
   }, [isLoading, user]);
 
-  // Load recipes when category is selected or show all
   useEffect(() => {
     if (!isLoading && user) {
       if (selectedCategory && selectedCategory !== "all") {
@@ -106,7 +106,6 @@ export default function RecipesPage() {
       alert("Recipe deleted successfully!");
       setShowDeleteModal(false);
       setRecipeToDelete(null);
-      // Refresh the list
       if (selectedCategory && selectedCategory !== "all") {
         fetchRecipesByCategory(selectedCategory);
       } else {
@@ -120,9 +119,23 @@ export default function RecipesPage() {
     }
   };
 
-  const filteredRecipes = recipes.filter((recipe) =>
-    recipe.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Normalize raw DB values (codes like "IN" → "India") and deduplicate
+  const availableCountries = Array.from(
+    new Set(
+      recipes
+        .flatMap((r) => r.countries ?? [])
+        .map(normalizeCountry)
+        .filter(Boolean),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
+
+  const filteredRecipes = recipes.filter((recipe) => {
+    const matchesSearch = recipe.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCountry =
+      !selectedCountry ||
+      (recipe.countries ?? []).map(normalizeCountry).includes(selectedCountry);
+    return matchesSearch && matchesCountry;
+  });
 
   if (isLoading) {
     return (
@@ -172,7 +185,7 @@ export default function RecipesPage() {
           </div>
 
           {/* Search and Filter */}
-          <div className="mb-6 grid gap-4 md:grid-cols-2">
+          <div className="mb-6 grid gap-4 md:grid-cols-3">
             <div className="relative">
               <FontAwesomeIcon
                 icon={faSearch}
@@ -196,6 +209,20 @@ export default function RecipesPage() {
                 {frameworkCategories.map((cat) => (
                   <option key={cat._id} value={cat._id}>
                     {cat.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <select
+                value={selectedCountry}
+                onChange={(e) => setSelectedCountry(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 font-saveful focus:border-saveful-green focus:outline-none focus:ring-2 focus:ring-saveful-green/20"
+              >
+                <option value="">All Countries</option>
+                {availableCountries.map((country) => (
+                  <option key={country} value={country}>
+                    {country}
                   </option>
                 ))}
               </select>

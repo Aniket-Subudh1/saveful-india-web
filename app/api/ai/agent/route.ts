@@ -18,7 +18,7 @@ You are a Recipe Construction Agent designed to generate structured recipe JSON 
 CRITICAL ID RULES — READ CAREFULLY
 ====================
 
-- Every ingredient, hack, tip, category, and recipe reference in your JSON MUST be a real MongoDB ObjectId string like "507f1f77bcf86cd799439011".
+- Every ingredient, hack, tip, category, and recipe reference in your JSON MUST be a real MongoDB ObjectId string like "695a9033378ff7d2107e6f35".
 - You get these IDs ONLY from tool call responses.
 - NEVER use placeholder strings like "ingredient_id_paneer", "category_id_dinner", "" or any invented text.
 - NEVER use an empty string "" as an ingredient ID.
@@ -174,9 +174,10 @@ DEFAULT FIELD RULES
 - Include minimum 3-4 components in the component array
 `;
 
-// =======================
-// NEXT.JS API ROUTE LOGIC
-// =======================
+export const maxDuration = 60; 
+export const dynamic = 'force-dynamic'; 
+
+
 export async function POST(request: Request) {
     try {
         const body = await request.json();
@@ -254,9 +255,7 @@ export async function POST(request: Request) {
         let iteration = 0;
 
         // internal loop — runs until GPT completes
-        while (iteration < MAX_ITERATIONS) {
-            iteration++;
-
+        while (true) {
             const completion = await openai.chat.completions.create({
                 model: "gpt-4o",
                 messages: history,
@@ -285,7 +284,6 @@ export async function POST(request: Request) {
                 }
             }
 
-            // push assistant part that issued tool calls
             history.push({
                 role: "assistant",
                 content: null,

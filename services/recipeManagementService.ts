@@ -68,6 +68,7 @@ export interface Recipe {
   components: RecipeComponentWrapper[];
   order?: number;
   isActive?: boolean;
+  countries?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -90,6 +91,7 @@ export interface CreateRecipeDto {
   components: RecipeComponentWrapper[];
   order?: number;
   isActive?: boolean;
+  countries?: string[];
 }
 
 export interface UpdateRecipeDto {
@@ -110,6 +112,7 @@ export interface UpdateRecipeDto {
   components?: RecipeComponentWrapper[];
   order?: number;
   isActive?: boolean;
+  countries?: string[];
 }
 
 export interface FrameworkCategory {
@@ -128,21 +131,45 @@ class RecipeManagementService {
 
   async getAllRecipes(): Promise<Recipe[]> {
     try {
+      console.log('Fetching recipes from:', `${this.API_BASE_URL}/api/api/recipe`);
+      
       const response = await apiGet(
         `${this.API_BASE_URL}/api/api/recipe`,
         "admin"
       );
 
+      console.log('Response status:', response.status, response.statusText);
+
       if (!response.ok) {
-        const error = await response.json().catch(() => ({
-          message: "Failed to fetch recipes",
-        }));
-        throw { response: { data: error } };
+        const errorText = await response.text();
+        console.error('Error response text:', errorText);
+        
+        let error;
+        try {
+          error = JSON.parse(errorText);
+        } catch {
+          error = { message: errorText || `Failed to fetch recipes (${response.status})` };
+        }
+        
+        throw { 
+          response: { 
+            data: error,
+            status: response.status,
+            statusText: response.statusText 
+          } 
+        };
       }
 
-      return response.json();
+      const data = await response.json();
+      console.log('Successfully fetched recipes:', data.length);
+      return data;
     } catch (error: any) {
-      console.error("Get all recipes error:", error);
+      console.error("Get all recipes error details:", {
+        message: error?.message,
+        status: error?.response?.status,
+        data: error?.response?.data,
+        error: error
+      });
       throw error;
     }
   }
@@ -242,6 +269,9 @@ class RecipeManagementService {
       if (data.isActive !== undefined) {
         formData.append("isActive", data.isActive.toString());
       }
+      if (data.countries !== undefined) {
+        formData.append("countries", JSON.stringify(data.countries));
+      }
 
       // Append hero image if provided
       if (heroImage) {
@@ -253,13 +283,20 @@ class RecipeManagementService {
         throw new Error("No authentication token available");
       }
 
+      // Create abort controller with 2 minute timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes
+
       const response = await fetch(`${this.API_BASE_URL}/api/api/recipe`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
         },
         body: formData,
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -309,6 +346,7 @@ class RecipeManagementService {
       if (data.useLeftoversIn !== undefined) formData.append("useLeftoversIn", JSON.stringify(data.useLeftoversIn));
       if (data.order !== undefined) formData.append("order", data.order.toString());
       if (data.isActive !== undefined) formData.append("isActive", data.isActive.toString());
+      if (data.countries !== undefined) formData.append("countries", JSON.stringify(data.countries));
 
       // Append hero image if provided
       if (heroImage) {
@@ -320,13 +358,20 @@ class RecipeManagementService {
         throw new Error("No authentication token available");
       }
 
+      // Create abort controller with 2 minute timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes
+
       const response = await fetch(`${this.API_BASE_URL}/api/api/recipe/${recipeId}`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
         },
         body: formData,
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();

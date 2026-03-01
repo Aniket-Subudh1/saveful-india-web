@@ -12,6 +12,7 @@ export interface UserOnboarding {
   noOfChildren: number;
   country?: string;
   stateCode?: string;
+  pincode?: string;
 }
 
 export interface UserSession {

@@ -18,6 +18,7 @@ import { dietManagementService, DietCategory } from "@/services/dietManagementSe
 import { sponsorManagementService, Sponsor } from "@/services/sponsorManagementService";
 import { hackOrTipManagementService, HackOrTip } from "@/services/hackOrTipManagementService";
 import { stickerManagementService, Sticker } from "@/services/stickerManagementService";
+import { COUNTRIES } from "@/lib/countries";
 
 const MONTHS = Object.values(Month);
 const THEMES = Object.values(IngredientTheme);
@@ -85,10 +86,17 @@ export default function EditIngredientPage() {
             isPantryItem: ing.isPantryItem,
             nutrition: ing.nutrition,
             order: ing.order,
+            countries: ing.countries || [],
           };
           console.log('Setting form data:', formData);
+          console.log('Hero Image URL from backend:', ing.heroImageUrl);
           setForm(formData);
-          if (ing.heroImageUrl) setHeroImagePreview(ing.heroImageUrl);
+          if (ing.heroImageUrl) {
+            console.log('Setting hero image preview to:', ing.heroImageUrl);
+            setHeroImagePreview(ing.heroImageUrl);
+          } else {
+            console.log('No hero image URL found in ingredient data');
+          }
         }
         const cats = categoriesRes.status === "fulfilled" ? categoriesRes.value : [];
         const dietsData = dietsRes.status === "fulfilled" ? dietsRes.value : [];
@@ -117,12 +125,25 @@ export default function EditIngredientPage() {
     console.log('Diets available:', diets.length);
   }, [form, categories, diets]);
 
+  // Debug: Log heroImagePreview changes
+  useEffect(() => {
+    console.log('Hero image preview state:', heroImagePreview);
+  }, [heroImagePreview]);
+
   const handleImageChange = (file?: File | null) => {
     if (!file) {
       setHeroImageFile(null);
-      setHeroImagePreview(null);
+      // Don't clear preview - keep existing image if no new file selected
       return;
     }
+    
+    // Validate image size (max 5MB to prevent timeout)
+    const maxSizeInBytes = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSizeInBytes) {
+      alert(`Image file is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Please select an image smaller than 5MB to avoid timeout issues.`);
+      return;
+    }
+    
     setHeroImageFile(file);
     const reader = new FileReader();
     reader.onload = () => setHeroImagePreview(reader.result as string);
@@ -268,15 +289,62 @@ export default function EditIngredientPage() {
           </div>
         </div>
 
+        {/* Countries */}
+        <div className="rounded-2xl border-2 border-gray-200 bg-white p-6">
+          <h3 className="mb-4 font-saveful-bold text-xl text-gray-800">Available Countries</h3>
+          <p className="mb-4 text-sm text-gray-500">Select the countries where this ingredient is available.</p>
+          <div className="flex flex-wrap gap-2">
+            {COUNTRIES.map((c) => {
+              const checked = (form.countries || []).includes(c.name);
+              return (
+                <label key={c.code} className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm cursor-pointer ${checked ? 'border-saveful-green bg-saveful-green/5' : 'border-gray-200 bg-white'}`}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => {
+                      const current = form.countries || [];
+                      setForm({
+                        ...form,
+                        countries: e.target.checked ? [...current, c.name] : current.filter((x) => x !== c.name),
+                      });
+                    }}
+                  />
+                  {c.name}
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
         {form.hasPage && (
           <div className="rounded-2xl border-2 border-gray-200 bg-white p-6 space-y-6">
             <h3 className="font-saveful-bold text-xl text-gray-800">Page Details</h3>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
                 <label className="mb-2 block font-saveful-semibold text-sm text-gray-700">Hero Image</label>
-                <input type="file" accept="image/*" onChange={(e) => handleImageChange(e.target.files?.[0])} />
-                {heroImagePreview && (
-                  <img src={heroImagePreview} alt="preview" className="mt-3 h-40 w-full rounded-lg object-cover" />
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={(e) => handleImageChange(e.target.files?.[0])} 
+                  className="mb-3"
+                />
+                {heroImagePreview ? (
+                  <div className="relative">
+                    <img 
+                      src={heroImagePreview} 
+                      alt="Ingredient hero image" 
+                      className="mt-3 h-40 w-full rounded-lg object-cover border-2 border-gray-200" 
+                      onError={(e) => {
+                        console.error('Failed to load image:', heroImagePreview);
+                        e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><text x="50%" y="50%" text-anchor="middle" dy=".3em">Image not found</text></svg>';
+                      }}
+                    />
+                    <p className="mt-1 text-xs text-gray-500">Current image</p>
+                  </div>
+                ) : (
+                  <div className="mt-3 h-40 w-full rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50">
+                    <p className="text-sm text-gray-400">No image uploaded yet</p>
+                  </div>
                 )}
               </div>
               <div>

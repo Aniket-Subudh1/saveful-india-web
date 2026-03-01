@@ -90,7 +90,8 @@ export const DesktopSidebar = ({
     <>
       <motion.div
         className={cn(
-          "hidden h-full shrink-0 border-r-2 border-[#E8B4D9]/20 bg-saveful-cream px-4 py-4 md:flex md:flex-col md:w-[300px]",
+          "hidden h-full shrink-0 border-r-2 border-[#E8B4D9]/20 bg-saveful-cream py-4 md:flex md:flex-col md:w-[300px]",
+          open ? "px-2" : "px-4",
           className
         )}
         animate={{
@@ -186,7 +187,8 @@ export const SidebarLink = ({
         href={link.href}
         onClick={handleClick}
         className={cn(
-          "group/sidebar flex items-center justify-start gap-3 rounded-lg px-3 py-2.5 transition-all hover:bg-saveful-purple/10",
+          "group/sidebar flex items-center gap-3 rounded-lg py-2.5 transition-all hover:bg-saveful-purple/10",
+          open ? "justify-start px-3" : "justify-center px-2",
           className
         )}
         {...props}
