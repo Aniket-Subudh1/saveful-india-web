@@ -452,3 +452,10 @@ export async function DELETE() {
     message: "Session cleared",
   });
 }
+
+export const GET = async () => {
+  return NextResponse.json({
+    success: true,
+    message: "GET method not implemented for this route agentv2",
+  });
+}

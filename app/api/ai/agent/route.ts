@@ -351,3 +351,10 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: false, message: "Session not found" });
 }
+
+export const GET = async () => {
+  return NextResponse.json({
+    success: true,
+    message: "GET method not implemented for this route agent",
+  });
+}
